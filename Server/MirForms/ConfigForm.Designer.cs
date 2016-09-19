@@ -64,6 +64,19 @@
             this.PasswordCheckBox = new System.Windows.Forms.CheckBox();
             this.AccountCheckBox = new System.Windows.Forms.CheckBox();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.SaveMysql = new System.Windows.Forms.CheckBox();
+            this.DBAccount = new System.Windows.Forms.TextBox();
+            this.label13 = new System.Windows.Forms.Label();
+            this.DBServer = new System.Windows.Forms.TextBox();
+            this.label12 = new System.Windows.Forms.Label();
+            this.Password = new System.Windows.Forms.TextBox();
+            this.Passworddb = new System.Windows.Forms.Label();
+            this.User = new System.Windows.Forms.TextBox();
+            this.Userdb = new System.Windows.Forms.Label();
+            this.IPdatabase = new System.Windows.Forms.TextBox();
+            this.label15 = new System.Windows.Forms.Label();
+            this.button1 = new System.Windows.Forms.Button();
+            this.Remove_button = new System.Windows.Forms.Button();
             this.SaveDelayTextBox = new System.Windows.Forms.TextBox();
             this.label6 = new System.Windows.Forms.Label();
             this.tabPage5 = new System.Windows.Forms.TabPage();
@@ -444,6 +457,19 @@
             // 
             // tabPage4
             // 
+            this.tabPage4.Controls.Add(this.SaveMysql);
+            this.tabPage4.Controls.Add(this.DBAccount);
+            this.tabPage4.Controls.Add(this.label13);
+            this.tabPage4.Controls.Add(this.DBServer);
+            this.tabPage4.Controls.Add(this.label12);
+            this.tabPage4.Controls.Add(this.Password);
+            this.tabPage4.Controls.Add(this.Passworddb);
+            this.tabPage4.Controls.Add(this.User);
+            this.tabPage4.Controls.Add(this.Userdb);
+            this.tabPage4.Controls.Add(this.IPdatabase);
+            this.tabPage4.Controls.Add(this.label15);
+            this.tabPage4.Controls.Add(this.button1);
+            this.tabPage4.Controls.Add(this.Remove_button);
             this.tabPage4.Controls.Add(this.SaveDelayTextBox);
             this.tabPage4.Controls.Add(this.label6);
             this.tabPage4.Location = new System.Drawing.Point(4, 22);
@@ -453,6 +479,121 @@
             this.tabPage4.TabIndex = 3;
             this.tabPage4.Text = "Database";
             this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // SaveMysql
+            // 
+            this.SaveMysql.AutoSize = true;
+            this.SaveMysql.Location = new System.Drawing.Point(242, 109);
+            this.SaveMysql.Name = "SaveMysql";
+            this.SaveMysql.Size = new System.Drawing.Size(133, 17);
+            this.SaveMysql.TabIndex = 120;
+            this.SaveMysql.Text = "Use MySQL DataBase";
+            this.SaveMysql.UseVisualStyleBackColor = true;
+            // 
+            // DBAccount
+            // 
+            this.DBAccount.Location = new System.Drawing.Point(282, 66);
+            this.DBAccount.MaxLength = 50;
+            this.DBAccount.Name = "DBAccount";
+            this.DBAccount.Size = new System.Drawing.Size(93, 20);
+            this.DBAccount.TabIndex = 119;
+            // 
+            // label13
+            // 
+            this.label13.AutoSize = true;
+            this.label13.Location = new System.Drawing.Point(208, 71);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(68, 13);
+            this.label13.TabIndex = 118;
+            this.label13.Text = "Account DB:";
+            // 
+            // DBServer
+            // 
+            this.DBServer.Location = new System.Drawing.Point(282, 40);
+            this.DBServer.MaxLength = 50;
+            this.DBServer.Name = "DBServer";
+            this.DBServer.Size = new System.Drawing.Size(93, 20);
+            this.DBServer.TabIndex = 117;
+            // 
+            // label12
+            // 
+            this.label12.AutoSize = true;
+            this.label12.Location = new System.Drawing.Point(217, 45);
+            this.label12.Name = "label12";
+            this.label12.Size = new System.Drawing.Size(59, 13);
+            this.label12.TabIndex = 116;
+            this.label12.Text = "Server DB:";
+            // 
+            // Password
+            // 
+            this.Password.Location = new System.Drawing.Point(89, 68);
+            this.Password.MaxLength = 50;
+            this.Password.Name = "Password";
+            this.Password.Size = new System.Drawing.Size(93, 20);
+            this.Password.TabIndex = 115;
+            // 
+            // Passworddb
+            // 
+            this.Passworddb.AutoSize = true;
+            this.Passworddb.Location = new System.Drawing.Point(27, 71);
+            this.Passworddb.Name = "Passworddb";
+            this.Passworddb.Size = new System.Drawing.Size(56, 13);
+            this.Passworddb.TabIndex = 114;
+            this.Passworddb.Text = "Password:";
+            // 
+            // User
+            // 
+            this.User.Location = new System.Drawing.Point(89, 42);
+            this.User.MaxLength = 50;
+            this.User.Name = "User";
+            this.User.Size = new System.Drawing.Size(93, 20);
+            this.User.TabIndex = 113;
+            // 
+            // Userdb
+            // 
+            this.Userdb.AutoSize = true;
+            this.Userdb.Location = new System.Drawing.Point(51, 45);
+            this.Userdb.Name = "Userdb";
+            this.Userdb.Size = new System.Drawing.Size(32, 13);
+            this.Userdb.TabIndex = 112;
+            this.Userdb.Text = "User:";
+            // 
+            // IPdatabase
+            // 
+            this.IPdatabase.Location = new System.Drawing.Point(282, 14);
+            this.IPdatabase.MaxLength = 15;
+            this.IPdatabase.Name = "IPdatabase";
+            this.IPdatabase.Size = new System.Drawing.Size(93, 20);
+            this.IPdatabase.TabIndex = 111;
+            // 
+            // label15
+            // 
+            this.label15.AutoSize = true;
+            this.label15.Location = new System.Drawing.Point(215, 19);
+            this.label15.Name = "label15";
+            this.label15.Size = new System.Drawing.Size(61, 13);
+            this.label15.TabIndex = 110;
+            this.label15.Text = "IP Address:";
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(246, 228);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(120, 52);
+            this.button1.TabIndex = 109;
+            this.button1.Text = "Save Account DB";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
+            // Remove_button
+            // 
+            this.Remove_button.Location = new System.Drawing.Point(21, 228);
+            this.Remove_button.Name = "Remove_button";
+            this.Remove_button.Size = new System.Drawing.Size(120, 52);
+            this.Remove_button.TabIndex = 108;
+            this.Remove_button.Text = "Save Server DB";
+            this.Remove_button.UseVisualStyleBackColor = true;
+            this.Remove_button.Click += new System.EventHandler(this.Remove_button_Click);
             // 
             // SaveDelayTextBox
             // 
@@ -582,5 +723,18 @@
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.GroupBox groupBox1;
-    }
+        private System.Windows.Forms.Button Remove_button;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.TextBox DBServer;
+        private System.Windows.Forms.Label label12;
+        private System.Windows.Forms.TextBox Password;
+        private System.Windows.Forms.Label Passworddb;
+        private System.Windows.Forms.TextBox User;
+        private System.Windows.Forms.Label Userdb;
+        private System.Windows.Forms.TextBox IPdatabase;
+        private System.Windows.Forms.Label label15;
+        private System.Windows.Forms.TextBox DBAccount;
+        private System.Windows.Forms.Label label13;
+        private System.Windows.Forms.CheckBox SaveMysql;
+        }
 }

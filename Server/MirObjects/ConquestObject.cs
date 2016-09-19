@@ -1042,9 +1042,13 @@ namespace Server.MirObjects
         }
         public void Save(BinaryWriter writer)
         {
-            if (Wall != null) Health = Wall.HP;
+            if (Wall != null)
+                {
+                Health = Wall.HP;
+                writer.Write(Wall.Health);
+                }
             writer.Write(Index);
-            writer.Write(Wall.Health);
+            
         }
 
 

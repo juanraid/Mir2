@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -19,6 +20,19 @@ namespace Server.MirDatabase
         {
 
         }
+        public MovementInfo(MySqlDataReader readerMovementsInfo)
+            {
+            MapIndex = Convert.ToInt32(readerMovementsInfo["MapIndex"]);
+            Source = new Point(Convert.ToInt32(readerMovementsInfo["Source_X"]), Convert.ToInt32(readerMovementsInfo["Source_Y"]));
+            Destination = new Point(Convert.ToInt32(readerMovementsInfo["Destination_X"]), Convert.ToInt32(readerMovementsInfo["Destination_Y"]));
+
+            if (Envir.LoadVersion < 16) return;
+            NeedHole = Convert.ToBoolean(readerMovementsInfo["NeedHole"]);
+            if (Envir.LoadVersion < 48) return;
+            NeedMove = Convert.ToBoolean(readerMovementsInfo["NeedMove"]);
+            if (Envir.LoadVersion < 69) return;
+            ConquestIndex = Convert.ToInt32(readerMovementsInfo["ConquestIndex"]);
+            }
 
         public MovementInfo(BinaryReader reader)
         {

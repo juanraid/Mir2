@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirEnvir
 {
@@ -20,7 +21,7 @@ namespace Server.MirEnvir
         public string Message = string.Empty;
         public uint Gold = 0;
         public List<UserItem> Items = new List<UserItem>();
-
+        public int ItemCount;
         public DateTime DateSent, DateOpened;
 
         public bool Sent
@@ -50,7 +51,107 @@ namespace Server.MirEnvir
             RecipientIndex = recipientIndex;
 
             CanReply = canReply;
-        }
+
+            string Update = "UPDATE " + Settings.DBAccount + ".generalcount SET NextMailID = '" + MailID + "'  WHERE IndexID = '1'";
+
+            Envir.ConnectADB.Update(Update);
+
+            }
+        public MailInfo(MySqlDataReader readerMail)
+            {
+            MailID = Convert.ToUInt32(readerMail["MailID"]);
+            Sender = readerMail["Sender"].ToString();
+            RecipientIndex = Convert.ToInt32(readerMail["RecipientIndex"]);
+            Message = readerMail["Message"].ToString();
+            Gold = Convert.ToUInt32(readerMail["Gold"]);
+            ItemCount = Convert.ToInt32(readerMail["ItemCount"]);
+            if (ItemCount > 0) { 
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBAccount + ".mailitems WHERE MailID = '" + MailID + "'";
+
+                MySqlDataReader readerAuctions = instruccion.ExecuteReader();
+
+                while (readerAuctions.Read())
+                    {
+                    UserItem AddItem = new UserItem(readerAuctions);
+
+                    if (SMain.Envir.BindItem(AddItem))
+                        {
+                            Items.Add(AddItem);
+                        }
+                    }
+
+                readerAuctions.Dispose();
+
+                    for (int i = 0; i < Items.Count; i++)
+                        {
+                    if (Items[i].IsAwake)
+                        {
+
+                        MySqlCommand instruccionAwake = connection.CreateCommand();
+
+                        instruccionAwake.CommandText = "SELECT * FROM " + Settings.DBAccount + ".mailitems WHERE UniqueID = '" + Items[i].UniqueID + "' ORDER BY Position";
+
+                        MySqlDataReader readerAwakeDB = instruccionAwake.ExecuteReader();
+
+                            Items[i].Awake = new Awake();
+                            Items[i].Awake.type = (AwakeType)Convert.ToInt32(Items[i].AwakeType);
+
+                        while (readerAwakeDB.Read())
+                            {
+                                Items[i].Awake.listAwake.Add(Convert.ToByte(readerAwakeDB["Value"]));
+                            }
+
+                        readerAwakeDB.Dispose();
+                        }
+                    if (Items[i].IsAttached)
+                        {
+
+                        MySqlCommand instruccionAttached = connection.CreateCommand();
+
+                        instruccionAttached.CommandText = "SELECT * FROM " + Settings.DBAccount + ".mailitems WHERE Attached = '" + Items[i].UniqueID + "' ORDER BY Position";
+
+                        MySqlDataReader readerAttachedDB = instruccionAttached.ExecuteReader();
+
+                            Items[i].Awake = new Awake();
+                            Items[i].Awake.type = (AwakeType)Convert.ToInt32(Items[i].AwakeType);
+
+                        while (readerAttachedDB.Read())
+                            {
+                                Items[i].Awake.listAwake.Add(Convert.ToByte(readerAttachedDB["Value"]));
+                            }
+
+                        readerAttachedDB.Dispose();
+                        }
+ }
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+                }
+        
+
+            DateSent = readerMail.GetDateTime(readerMail.GetOrdinal("DateSent"));
+            DateOpened = readerMail.GetDateTime(readerMail.GetOrdinal("DateOpened"));
+
+            Locked = Convert.ToBoolean(readerMail["Locked"]);
+            Collected = Convert.ToBoolean(readerMail["Collected"]);
+            CanReply = Convert.ToBoolean(readerMail["CanReply"]);
+            }
 
         public MailInfo(BinaryReader reader, int version, int customversion)
         {
@@ -133,7 +234,13 @@ namespace Server.MirEnvir
             SMain.Envir.Mail.Add(this); //add to postbox
 
             DateSent = DateTime.Now;
-        }
+            DateTime theDate = DateSent;
+            DateTime theDate1 = DateOpened;
+
+            string sqlMail = "INSERT INTO  " + Settings.DBAccount + ".mail ( MailID, Sender, RecipientIndex, Message, Gold, DateSent, DateOpened, Locked, Collected, CanReply, ItemCount) VALUES ('" + MailID + "', '" + Sender + "', '" + RecipientIndex + "', '" + Message + "', '" + Gold + "', '" + theDate.ToString("yyyy-MM-dd H:mm:ss").ToString() + "', '" + theDate1.ToString("yyyy-MM-dd H:mm:ss").ToString() + "', '" + Convert.ToInt32(Locked) + "', '" + Convert.ToInt32(Collected) + "', '" + Convert.ToInt32(CanReply) + "', '"+ Items.Count +"')";
+            Envir.ConnectADB.Insert(sqlMail);
+            
+            }
 
         public bool Receive()
         {

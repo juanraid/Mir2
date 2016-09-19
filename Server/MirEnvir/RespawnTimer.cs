@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirEnvir
 {
@@ -40,6 +41,12 @@ namespace Server.MirEnvir
         {
 
         }
+        public RespawnTickOption(MySqlDataReader readerrespawntimeroption)
+            {
+            UserCount = Convert.ToInt32(readerrespawntimeroption["UserCount"]);
+            DelayLoss = Convert.ToDouble(readerrespawntimeroption["DelayLoss"]);
+            }
+
         public RespawnTickOption(BinaryReader reader)
         {
             UserCount = reader.ReadInt32();
@@ -73,6 +80,16 @@ namespace Server.MirEnvir
             Respawn.Add(Option);
             //LastTick = SMain.Envir.Time;
         }
+
+        public RespawnTimer(MySqlDataReader readerrespawntimer)
+            {
+
+            BaseSpawnRate = Convert.ToByte(readerrespawntimer["BaseSpawnRate"]);
+            CurrentTickcounter = Convert.ToUInt64(readerrespawntimer["CurrentTickcounter"]);
+            LastTick = SMain.Envir.Time;
+            Respawn.Clear();
+            CurrentDelay = (long)Math.Round((double)BaseSpawnRate * (double)60000);
+            }
 
         public RespawnTimer(BinaryReader reader)
         {

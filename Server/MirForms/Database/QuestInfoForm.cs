@@ -42,7 +42,13 @@ namespace Server
 
             if (MessageBox.Show("Are you sure you want to remove the selected Quests?", "Remove Quests?", MessageBoxButtons.YesNo) != DialogResult.Yes) return;
 
-            for (int i = 0; i < _selectedQuestInfos.Count; i++) Envir.Remove(_selectedQuestInfos[i]);
+            for (int i = 0; i < _selectedQuestInfos.Count; i++)
+                {
+                Envir.Remove(_selectedQuestInfos[i]);
+                string sqlDelete = "DELETE FROM " + Settings.DBServer + ".questinfo WHERE IndexID = '" + _selectedQuestInfos[i].Index + "'";
+
+                Envir.ConnectADB.Delete(sqlDelete);
+                }
 
             if (Envir.QuestInfoList.Count == 0) Envir.QuestIndex = 0;
 
@@ -168,7 +174,7 @@ namespace Server
 
         private void QuestInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Envir.SaveDB();
+           // Envir.SaveDB();
         }
 
         private void PasteMButton_Click(object sender, EventArgs e)
@@ -192,66 +198,22 @@ namespace Server
         }
 
 
-        private void ExportAllButton_Click(object sender, EventArgs e)
-        {
-            ExportQuests(Envir.QuestInfoList);
-        }
 
-        private void ExportSelected_Click(object sender, EventArgs e)
+        private void SaveButton_Click(object sender, EventArgs e)
         {
             var list = QuestInfoListBox.SelectedItems.Cast<QuestInfo>().ToList();
-
-            ExportQuests(list);
-        }
-
-        public void ExportQuests(List<QuestInfo> Quests)
-        {
-            if (Quests.Count == 0) return;
-
-            SaveFileDialog sfd = new SaveFileDialog();
-            sfd.InitialDirectory = Application.StartupPath + @"\Exports";
-            sfd.Filter = "Text File|*.txt";
-            sfd.ShowDialog();
-
-            if (sfd.FileName == string.Empty) return;
-
-            using (StreamWriter sw = File.AppendText(sfd.FileNames[0]))
-            {
-                for (int j = 0; j < Quests.Count; j++)
+            if (list.Count == 0)
                 {
-                    sw.WriteLine(Quests[j].ToText());
+                MessageBox.Show("Not selected any Quest");
+                return;
                 }
+
+            for (int i = 0; i < list.Count; i++)
+                { 
+                QuestInfo.SaveQuestDB(list[i]);
             }
-            MessageBox.Show("Quest Export complete");
-        }
-
-
-        private void ImportButton_Click(object sender, EventArgs e)
-        {
-            string Path = string.Empty;
-
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Text File|*.txt";
-            ofd.ShowDialog();
-
-            if (ofd.FileName == string.Empty) return;
-
-            Path = ofd.FileName;
-
-            string data;
-            using (var sr = new StreamReader(Path))
-            {
-                data = sr.ReadToEnd();
+            MessageBox.Show("Saved Questc(s)");
             }
-
-            var quests = data.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var m in quests)
-                QuestInfo.FromText(m);
-
-            UpdateInterface();
-            MessageBox.Show("Quest Import complete");
-        }
 
         private void QNameTextBox_TextChanged(object sender, EventArgs e)
         {

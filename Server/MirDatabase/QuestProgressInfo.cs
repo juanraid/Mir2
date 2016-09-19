@@ -5,13 +5,13 @@ using System.Linq;
 using Server.MirObjects;
 using System.Text.RegularExpressions;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
     public class QuestProgressInfo
     {
         public int Index;
-
         public QuestInfo Info;
 
         public DateTime StartDateTime = DateTime.MinValue;
@@ -25,17 +25,31 @@ namespace Server.MirDatabase
 
         public bool Taken
         {
-            get { return StartDateTime > DateTime.MinValue; }
+            get {
+                DateTime dt = DateTime.MinValue;
+                DateTime dt1 = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                return StartDateTime > dt1;
+                }
         }
 
         public bool Completed
         {
-            get { return EndDateTime < DateTime.MaxValue; }
+
+            get {
+                DateTime dt = DateTime.MaxValue;
+                DateTime dt1 = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                return EndDateTime < dt1;
+                }
         }
 
         public bool New
         {
-            get { return StartDateTime > DateTime.Now.AddDays(-1); }
+            get {
+                DateTime dt = DateTime.Now.AddDays(-1);
+                DateTime dt1 = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                return StartDateTime > dt1;
+                }
+            
         }
 
         public QuestProgressInfo(int index)
@@ -55,6 +69,94 @@ namespace Server.MirDatabase
 
             CheckCompleted();
         }
+
+        public QuestProgressInfo(MySqlDataReader readerQuestProgressDB, string Name)
+            {
+            Index = Convert.ToInt32(readerQuestProgressDB["IndexID"]);
+            Info = SMain.Envir.QuestInfoList.FirstOrDefault(e => e.Index == Index);
+
+            // StartDateTime = DateTime.Now;
+            //  EndDateTime = DateTime.MaxValue;
+
+            EndDateTime = readerQuestProgressDB.GetDateTime(readerQuestProgressDB.GetOrdinal("EndDateTime"));
+            StartDateTime = readerQuestProgressDB.GetDateTime(readerQuestProgressDB.GetOrdinal("StartDateTime"));
+
+            try
+                { 
+
+            MySqlConnection connection = new MySqlConnection(); //star conection 
+            String connectionString;
+            connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+            connection.ConnectionString = connectionString;
+            connection.Open();
+
+            MySqlCommand instruccionKillTask = connection.CreateCommand();
+                
+                    instruccionKillTask.CommandText = "SELECT * FROM " + Settings.DBAccount + ".killtaskcount WHERE ChName = '" + Name + "' and IndexID = '" + Index + "' ORDER BY IndexID, Position";
+
+                            MySqlDataReader readerKillTask = instruccionKillTask.ExecuteReader();
+
+
+                            while (readerKillTask.Read())
+                                {
+
+                                int position = Convert.ToInt32(readerKillTask["Position"]);
+                                int value = Convert.ToInt32(readerKillTask["Value"]);
+
+                                KillTaskCount.Add(value);
+
+                                }
+
+                            readerKillTask.Dispose();
+
+
+                    MySqlCommand instruccionItemTask = connection.CreateCommand();
+
+                    instruccionItemTask.CommandText = "SELECT * FROM " + Settings.DBAccount + ".itemtaskcount WHERE ChName = '" + Name + "' and IndexID = '" + Index + "' ORDER BY IndexID, Position";
+
+                    MySqlDataReader readerItemTask = instruccionItemTask.ExecuteReader();
+
+
+                    while (readerItemTask.Read())
+                        {
+
+                        int position = Convert.ToInt32(readerItemTask["Position"]);
+                        long value = Convert.ToInt64(readerItemTask["Value"]);
+
+                        ItemTaskCount.Add(value);
+                        
+                        }
+
+                    readerItemTask.Dispose();
+
+                        MySqlCommand instruccionFlagTask = connection.CreateCommand();
+
+                        instruccionFlagTask.CommandText = "SELECT * FROM " + Settings.DBAccount + ".flagtaskset WHERE ChName = '" + Name + "' and IndexID = '" + Index + "' ORDER BY IndexID, Position";
+
+                        MySqlDataReader readerFlagTask = instruccionFlagTask.ExecuteReader();
+
+
+                        while (readerFlagTask.Read())
+                            {
+
+                            int position = Convert.ToInt32(readerFlagTask["Position"]);
+                            bool value = Convert.ToBoolean(readerFlagTask["value"]);
+
+                            FlagTaskSet.Add(value);
+
+                            }
+
+                        readerFlagTask.Dispose();
+
+                         connection.Close();
+
+                    }
+
+                catch (MySqlException ex)
+                    {
+                    SMain.Enqueue(ex);
+                    }
+            }
 
         public QuestProgressInfo(BinaryReader reader)
         {
@@ -185,7 +287,9 @@ namespace Server.MirDatabase
             if (!canComplete) return false;
 
             if (!Completed)
+
                 EndDateTime = DateTime.Now;
+                
 
             return true;
         }
@@ -194,7 +298,7 @@ namespace Server.MirDatabase
 
         public bool NeedItem(ItemInfo iInfo)
         {
-            return Info.ItemTasks.Where((task, i) => ItemTaskCount[i] < task.Count && task.Item == iInfo).Any();
+            return Info.ItemTasks.Where((task, i) => ItemTaskCount[i] < task.Count && task.Item.Index == iInfo.Index).Any();
         }
 
         public bool NeedKill(MonsterInfo mInfo)
@@ -221,9 +325,9 @@ namespace Server.MirDatabase
                 //if (Info.KillTasks[i].Monster.Index != mobIndex) continue;
                 if (!mInfo.Name.StartsWith(Info.KillTasks[i].Monster.Name, StringComparison.OrdinalIgnoreCase)) continue;
                 KillTaskCount[i]++;
-
                 return;
-            }
+
+                }
         }
 
         public void ProcessItem(UserItem[] inventory)
@@ -231,11 +335,11 @@ namespace Server.MirDatabase
             for (int i = 0; i < Info.ItemTasks.Count; i++)
             {
                 long count = inventory.Where(item => item != null).
-                    Where(item => item.Info == Info.ItemTasks[i].Item).
+                    Where(item => item.Info.Index == Info.ItemTasks[i].Item.Index).
                     Aggregate<UserItem, long>(0, (current, item) => current + item.Count);
 
                 ItemTaskCount[i] = count;
-            }
+                }
         }
 
         public void ProcessFlag(bool[] Flags)
@@ -247,6 +351,7 @@ namespace Server.MirDatabase
                     if (Info.FlagTasks[i].Number != j || !Flags[j]) continue;
 
                     FlagTaskSet[i] = Flags[j];
+
                     break;
                 }
             }

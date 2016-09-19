@@ -76,7 +76,7 @@ namespace Server.MirObjects
         public List<NPCPage> NPCPages = new List<NPCPage>();
 
         public ConquestObject Conq;
-
+        
         public float PriceRate(PlayerObject player, bool baseRate = false)
         {
             if (Conq == null || baseRate) return Info.Rate / 100F;
@@ -914,7 +914,10 @@ namespace Server.MirObjects
                         foreach (var mail in player.Info.Mail)
                         {
                             if (mail.Parcel) mail.Collected = true;
-                        }
+                            string Update = "UPDATE " + Settings.DBAccount + ".mail SET Collected = '1'  WHERE MailID = '" + mail.MailID + "'";
+
+                            Envir.ConnectADB.Update(Update);
+                            }
                     }
                     player.Enqueue(new S.ParcelCollected { Result = result });
                     player.GetMail();
@@ -1337,10 +1340,16 @@ namespace Server.MirObjects
             if (player.NPCPage.Key.ToUpper() == PearlBuyKey)//pearl currency
             {
                 player.Info.PearlCount -= (int)cost;
+
             }
             else
             {
                 player.Account.Gold -= cost;
+
+                string Update = "UPDATE " + Settings.DBAccount + ".account SET Gold= '" + player.Account.Gold + "'  WHERE IndexID = '" + player.Account.Index + "'";
+
+                Envir.ConnectADB.Update(Update);
+
                 player.Enqueue(new S.LoseGold { Gold = cost });
                 if (Conq != null) Conq.GoldStorage += (cost - baseCost);
             }
@@ -1526,5 +1535,6 @@ namespace Server.MirObjects
         CheckPermission,
         ConquestAvailable,
         ConquestOwner,
-    }
+        Checkundead,
+        }
 }

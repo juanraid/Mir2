@@ -10,12 +10,14 @@ using System.IO;
 using Server.MirDatabase;
 using Server.MirNetwork;
 using Server.MirObjects;
+using Server.MirEnvir;
 using S = ServerPackets;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirEnvir
-{
-    public class MobThread
     {
+    public class MobThread
+        {
         public int Id = 0;
         public long LastRunTime = 0;
         public long StartTime = 0;
@@ -23,34 +25,35 @@ namespace Server.MirEnvir
         public LinkedList<MapObject> ObjectsList = new LinkedList<MapObject>();
         public LinkedListNode<MapObject> current = null;
         public Boolean Stop = false;
-    }
+        }
 
     public class RandomProvider
-    {
+        {
         private static int seed = Environment.TickCount;
         private static ThreadLocal<Random> RandomWrapper = new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
 
         public static Random GetThreadRadom()
-        {
+            {
             return RandomWrapper.Value;
-        }
+            }
 
         public int Next()
-        {
+            {
             return RandomWrapper.Value.Next();
-        }
+            }
         public int Next(int maxValue)
-        {
+            {
             return RandomWrapper.Value.Next(maxValue);
-        }
+            }
         public int Next(int minValue, int maxValue)
-        {
+            {
             return RandomWrapper.Value.Next(minValue, maxValue);
+            }
         }
-    }
 
     public class Envir
-    {
+        {
+        public static ADBConnect ConnectADB = new ADBConnect();
         public static object AccountLock = new object();
         public static object LoadLock = new object();
 
@@ -74,36 +77,40 @@ namespace Server.MirEnvir
         private static List<string> DisabledCharNames = new List<string>();
 
         public DateTime Now
-        {
+            {
             get { return _startTime.AddMilliseconds(Time); }
-        }
+            }
 
         public bool Running { get; private set; }
 
 
         private static uint _objectID;
         public uint ObjectID
-        {
+            {
             get { return ++_objectID; }
-        }
+            }
 
         public static int _playerCount;
         public int PlayerCount
-        {
+            {
             get { return Players.Count; }
-        }
+            }
 
         public RandomProvider Random = new RandomProvider();
 
 
         private Thread _thread;
+        private Thread _threadProgressDB;
+        // private Thread _threadgeneral;
+        // private Thread _threadAuctionsDB;
+
         private TcpListener _listener;
         private bool StatusPortEnabled = true;
         public List<MirStatusConnection> StatusConnections = new List<MirStatusConnection>();
         private TcpListener _StatusPort;
         private int _sessionID;
         public List<MirConnection> Connections = new List<MirConnection>();
-        
+
 
         //Server DB
         public int MapIndex, ItemIndex, MonsterIndex, NPCIndex, QuestIndex, GameshopIndex, ConquestIndex, RespawnIndex;
@@ -121,15 +128,20 @@ namespace Server.MirEnvir
         public int NextAccountID, NextCharacterID;
         public ulong NextUserItemID, NextAuctionID, NextMailID;
         public List<AccountInfo> AccountList = new List<AccountInfo>();
-        public List<CharacterInfo> CharacterList = new List<CharacterInfo>(); 
+        public List<CharacterInfo> CharacterList = new List<CharacterInfo>();
         public LinkedList<AuctionInfo> Auctions = new LinkedList<AuctionInfo>();
         public int GuildCount, NextGuildID;
         public List<GuildObject> GuildList = new List<GuildObject>();
-       
+        public SaveAccount SaveAccountDB = new SaveAccount();
+        public AccountInfo account = new AccountInfo();
+
+        //Check
+
+        public List<CharacterInfo> CheckCharacterList = new List<CharacterInfo>();
 
         //Live Info
         public List<Map> MapList = new List<Map>();
-        public List<SafeZoneInfo> StartPoints = new List<SafeZoneInfo>(); 
+        public List<SafeZoneInfo> StartPoints = new List<SafeZoneInfo>();
         public List<ItemInfo> StartItems = new List<ItemInfo>();
         public List<MailInfo> Mail = new List<MailInfo>();
         public List<PlayerObject> Players = new List<PlayerObject>();
@@ -139,7 +151,7 @@ namespace Server.MirEnvir
 
         public List<ConquestInfo> ConquestInfos = new List<ConquestInfo>();
         public List<ConquestObject> Conquests = new List<ConquestObject>();
-        
+
 
 
         //multithread vars
@@ -168,7 +180,7 @@ namespace Server.MirEnvir
         public int[] RankBottomLevel = new int[6];
 
         static Envir()
-        {
+            {
             AccountIDReg =
                 new Regex(@"^[A-Za-z0-9]{" + Globals.MinAccountIDLength + "," + Globals.MaxAccountIDLength + "}$");
             PasswordReg =
@@ -178,23 +190,23 @@ namespace Server.MirEnvir
                 new Regex(@"^[A-Za-z0-9]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength +
                           "}$");
 
-            string path = Path.Combine(Settings.EnvirPath,  "DisabledChars.txt");
+            string path = Path.Combine(Settings.EnvirPath, "DisabledChars.txt");
             DisabledCharNames.Clear();
             if (!File.Exists(path))
-            {
-                File.WriteAllText(path,"");
-            }
+                {
+                File.WriteAllText(path, "");
+                }
             else
-            {
+                {
                 string[] lines = File.ReadAllLines(path);
 
                 for (int i = 0; i < lines.Length; i++)
-                {
+                    {
                     if (lines[i].StartsWith(";") || string.IsNullOrWhiteSpace(lines[i])) continue;
                     DisabledCharNames.Add(lines[i].ToUpper());
+                    }
                 }
             }
-        }
 
         public static int LastCount = 0, LastRealCount = 0;
         public static long LastRunTime = 0;
@@ -204,21 +216,21 @@ namespace Server.MirEnvir
         private int DailyTime = DateTime.Now.Day;
 
         private bool MagicExists(Spell spell)
-        {
-            for (int i = 0; i < MagicInfoList.Count; i++ )
             {
+            for (int i = 0; i < MagicInfoList.Count; i++)
+                {
                 if (MagicInfoList[i].Spell == spell) return true;
-            }
+                }
             return false;
-        }
+            }
 
         private void UpdateMagicInfo()
-        {
-            for (int i = 0; i < MagicInfoList.Count; i++)
             {
-                switch(MagicInfoList[i].Spell)
+            for (int i = 0; i < MagicInfoList.Count; i++)
                 {
-                        //warrior
+                switch (MagicInfoList[i].Spell)
+                    {
+                    //warrior
                     case Spell.Thrusting:
                         MagicInfoList[i].MultiplierBase = 0.25f;
                         MagicInfoList[i].MultiplierBonus = 0.25f;
@@ -250,11 +262,11 @@ namespace Server.MirEnvir
                         MagicInfoList[i].MultiplierBase = 3.25f;
                         MagicInfoList[i].MultiplierBonus = 0.25f;
                         break;
-                        //wiz
+                    //wiz
                     case Spell.Repulsion:
                         MagicInfoList[i].MPowerBase = 4;
                         break;
-                        //tao
+                    //tao
                     case Spell.Poisoning:
                         MagicInfoList[i].MPowerBase = 0;
                         break;
@@ -265,7 +277,7 @@ namespace Server.MirEnvir
                         MagicInfoList[i].MPowerBase = 0;
                         MagicInfoList[i].PowerBase = 0;
                         break;
-                        //sin
+                    //sin
                     case Spell.FatalSword:
                         MagicInfoList[i].MPowerBase = 20;
                         break;
@@ -292,34 +304,34 @@ namespace Server.MirEnvir
                         break;
                         //archer
                         //no changes :p
+                    }
                 }
             }
-        }
 
         private void FillMagicInfoList()
-        {
+            {
             //Warrior
-            if (!MagicExists(Spell.Fencing)) MagicInfoList.Add(new MagicInfo {Name = "Fencing", Spell = Spell.Fencing, Icon = 2, Level1 = 7, Level2 = 9, Level3 = 12, Need1 = 270, Need2 = 600, Need3 = 1300, Range = 0 });
+            if (!MagicExists(Spell.Fencing)) MagicInfoList.Add(new MagicInfo { Name = "Fencing", Spell = Spell.Fencing, Icon = 2, Level1 = 7, Level2 = 9, Level3 = 12, Need1 = 270, Need2 = 600, Need3 = 1300, Range = 0 });
             if (!MagicExists(Spell.Slaying)) MagicInfoList.Add(new MagicInfo { Name = "Slaying", Spell = Spell.Slaying, Icon = 6, Level1 = 15, Level2 = 17, Level3 = 20, Need1 = 500, Need2 = 1100, Need3 = 1800, Range = 0 });
             if (!MagicExists(Spell.Thrusting)) MagicInfoList.Add(new MagicInfo { Name = "Thrusting", Spell = Spell.Thrusting, Icon = 11, Level1 = 22, Level2 = 24, Level3 = 27, Need1 = 2000, Need2 = 3500, Need3 = 6000, Range = 0, MultiplierBase = 0.25f, MultiplierBonus = 0.25f });
-            if (!MagicExists(Spell.HalfMoon)) MagicInfoList.Add(new MagicInfo { Name = "HalfMoon", Spell = Spell.HalfMoon, Icon = 24, Level1 = 26, Level2 = 28, Level3 = 31, Need1 = 5000, Need2 = 8000, Need3 = 14000, BaseCost = 3, Range = 0, MultiplierBase =0.3f, MultiplierBonus = 0.1f });
-            if (!MagicExists(Spell.ShoulderDash)) MagicInfoList.Add(new MagicInfo { Name = "ShoulderDash", Spell = Spell.ShoulderDash, Icon = 26, Level1 = 30, Level2 = 32, Level3 = 34, Need1 = 3000, Need2 = 4000, Need3 = 6000, BaseCost = 4, LevelCost = 4, DelayBase = 2500, Range = 0 , MPowerBase = 4});
-            if (!MagicExists(Spell.TwinDrakeBlade)) MagicInfoList.Add(new MagicInfo { Name = "TwinDrakeBlade", Spell = Spell.TwinDrakeBlade, Icon = 37, Level1 = 32, Level2 = 34, Level3 = 37, Need1 = 4000, Need2 = 6000, Need3 = 10000, BaseCost = 10, Range = 0 , MultiplierBase = 0.8f, MultiplierBonus = 0.1f});
+            if (!MagicExists(Spell.HalfMoon)) MagicInfoList.Add(new MagicInfo { Name = "HalfMoon", Spell = Spell.HalfMoon, Icon = 24, Level1 = 26, Level2 = 28, Level3 = 31, Need1 = 5000, Need2 = 8000, Need3 = 14000, BaseCost = 3, Range = 0, MultiplierBase = 0.3f, MultiplierBonus = 0.1f });
+            if (!MagicExists(Spell.ShoulderDash)) MagicInfoList.Add(new MagicInfo { Name = "ShoulderDash", Spell = Spell.ShoulderDash, Icon = 26, Level1 = 30, Level2 = 32, Level3 = 34, Need1 = 3000, Need2 = 4000, Need3 = 6000, BaseCost = 4, LevelCost = 4, DelayBase = 2500, Range = 0, MPowerBase = 4 });
+            if (!MagicExists(Spell.TwinDrakeBlade)) MagicInfoList.Add(new MagicInfo { Name = "TwinDrakeBlade", Spell = Spell.TwinDrakeBlade, Icon = 37, Level1 = 32, Level2 = 34, Level3 = 37, Need1 = 4000, Need2 = 6000, Need3 = 10000, BaseCost = 10, Range = 0, MultiplierBase = 0.8f, MultiplierBonus = 0.1f });
             if (!MagicExists(Spell.Entrapment)) MagicInfoList.Add(new MagicInfo { Name = "Entrapment", Spell = Spell.Entrapment, Icon = 46, Level1 = 32, Level2 = 35, Level3 = 37, Need1 = 2000, Need2 = 3500, Need3 = 5500, BaseCost = 15, LevelCost = 3, Range = 9 });
-            if (!MagicExists(Spell.FlamingSword)) MagicInfoList.Add(new MagicInfo { Name = "FlamingSword", Spell = Spell.FlamingSword, Icon = 25, Level1 = 35, Level2 = 37, Level3 = 40, Need1 = 2000, Need2 = 4000, Need3 = 6000, BaseCost = 7, Range = 0, MultiplierBase = 1.4f, MultiplierBonus = 0.4f});
+            if (!MagicExists(Spell.FlamingSword)) MagicInfoList.Add(new MagicInfo { Name = "FlamingSword", Spell = Spell.FlamingSword, Icon = 25, Level1 = 35, Level2 = 37, Level3 = 40, Need1 = 2000, Need2 = 4000, Need3 = 6000, BaseCost = 7, Range = 0, MultiplierBase = 1.4f, MultiplierBonus = 0.4f });
             if (!MagicExists(Spell.LionRoar)) MagicInfoList.Add(new MagicInfo { Name = "LionRoar", Spell = Spell.LionRoar, Icon = 42, Level1 = 36, Level2 = 39, Level3 = 41, Need1 = 5000, Need2 = 8000, Need3 = 12000, BaseCost = 14, LevelCost = 4, Range = 0 });
             if (!MagicExists(Spell.CrossHalfMoon)) MagicInfoList.Add(new MagicInfo { Name = "CrossHalfMoon", Spell = Spell.CrossHalfMoon, Icon = 33, Level1 = 38, Level2 = 40, Level3 = 42, Need1 = 7000, Need2 = 11000, Need3 = 16000, BaseCost = 6, Range = 0, MultiplierBase = 0.4f, MultiplierBonus = 0.1f });
-            if (!MagicExists(Spell.BladeAvalanche)) MagicInfoList.Add(new MagicInfo { Name = "BladeAvalanche", Spell = Spell.BladeAvalanche, Icon = 43, Level1 = 38, Level2 = 41, Level3 = 43, Need1 = 5000, Need2 = 8000, Need3 = 12000, BaseCost = 14, LevelCost = 4, Range = 0, MultiplierBonus = 0.3f});
+            if (!MagicExists(Spell.BladeAvalanche)) MagicInfoList.Add(new MagicInfo { Name = "BladeAvalanche", Spell = Spell.BladeAvalanche, Icon = 43, Level1 = 38, Level2 = 41, Level3 = 43, Need1 = 5000, Need2 = 8000, Need3 = 12000, BaseCost = 14, LevelCost = 4, Range = 0, MultiplierBonus = 0.3f });
             if (!MagicExists(Spell.ProtectionField)) MagicInfoList.Add(new MagicInfo { Name = "ProtectionField", Spell = Spell.ProtectionField, Icon = 50, Level1 = 39, Level2 = 42, Level3 = 45, Need1 = 6000, Need2 = 12000, Need3 = 18000, BaseCost = 23, LevelCost = 6, Range = 0 });
             if (!MagicExists(Spell.Rage)) MagicInfoList.Add(new MagicInfo { Name = "Rage", Spell = Spell.Rage, Icon = 49, Level1 = 44, Level2 = 47, Level3 = 50, Need1 = 8000, Need2 = 14000, Need3 = 20000, BaseCost = 20, LevelCost = 5, Range = 0 });
-            if (!MagicExists(Spell.CounterAttack)) MagicInfoList.Add(new MagicInfo { Name = "CounterAttack", Spell = Spell.CounterAttack, Icon = 72, Level1 = 47, Level2 = 51, Level3 = 55, Need1 = 7000, Need2 = 11000, Need3 = 15000, BaseCost = 12, LevelCost = 4, DelayBase = 24000, Range = 0 , MultiplierBonus = 0.4f});
-            if (!MagicExists(Spell.SlashingBurst)) MagicInfoList.Add(new MagicInfo { Name = "SlashingBurst", Spell = Spell.SlashingBurst, Icon = 55, Level1 = 50, Level2 = 53, Level3 = 56, Need1 = 10000, Need2 = 16000, Need3 = 24000, BaseCost = 25, LevelCost = 4, MPowerBase = 1, PowerBase = 3, DelayBase = 14000, DelayReduction = 4000, Range = 0 , MultiplierBase = 3.25f, MultiplierBonus = 0.25f});
+            if (!MagicExists(Spell.CounterAttack)) MagicInfoList.Add(new MagicInfo { Name = "CounterAttack", Spell = Spell.CounterAttack, Icon = 72, Level1 = 47, Level2 = 51, Level3 = 55, Need1 = 7000, Need2 = 11000, Need3 = 15000, BaseCost = 12, LevelCost = 4, DelayBase = 24000, Range = 0, MultiplierBonus = 0.4f });
+            if (!MagicExists(Spell.SlashingBurst)) MagicInfoList.Add(new MagicInfo { Name = "SlashingBurst", Spell = Spell.SlashingBurst, Icon = 55, Level1 = 50, Level2 = 53, Level3 = 56, Need1 = 10000, Need2 = 16000, Need3 = 24000, BaseCost = 25, LevelCost = 4, MPowerBase = 1, PowerBase = 3, DelayBase = 14000, DelayReduction = 4000, Range = 0, MultiplierBase = 3.25f, MultiplierBonus = 0.25f });
             if (!MagicExists(Spell.Fury)) MagicInfoList.Add(new MagicInfo { Name = "Fury", Spell = Spell.Fury, Icon = 76, Level1 = 45, Level2 = 48, Level3 = 51, Need1 = 8000, Need2 = 14000, Need3 = 20000, BaseCost = 10, LevelCost = 4, DelayBase = 600000, DelayReduction = 120000, Range = 0 });
             if (!MagicExists(Spell.ImmortalSkin)) MagicInfoList.Add(new MagicInfo { Name = "ImmortalSkin", Spell = Spell.ImmortalSkin, Icon = 80, Level1 = 60, Level2 = 61, Level3 = 62, Need1 = 1560, Need2 = 2200, Need3 = 3000, BaseCost = 10, LevelCost = 4, DelayBase = 600000, DelayReduction = 120000, Range = 0 });
 
             //Wizard
             if (!MagicExists(Spell.FireBall)) MagicInfoList.Add(new MagicInfo { Name = "FireBall", Spell = Spell.FireBall, Icon = 0, Level1 = 7, Level2 = 9, Level3 = 11, Need1 = 200, Need2 = 350, Need3 = 700, BaseCost = 3, LevelCost = 2, MPowerBase = 8, PowerBase = 2, Range = 9 });
-            if (!MagicExists(Spell.Repulsion)) MagicInfoList.Add(new MagicInfo { Name = "Repulsion", Spell = Spell.Repulsion, Icon = 7, Level1 = 12, Level2 = 15, Level3 = 19, Need1 = 500, Need2 = 1300, Need3 = 2200, BaseCost = 2, LevelCost = 2, Range = 0, MPowerBase = 4});
+            if (!MagicExists(Spell.Repulsion)) MagicInfoList.Add(new MagicInfo { Name = "Repulsion", Spell = Spell.Repulsion, Icon = 7, Level1 = 12, Level2 = 15, Level3 = 19, Need1 = 500, Need2 = 1300, Need3 = 2200, BaseCost = 2, LevelCost = 2, Range = 0, MPowerBase = 4 });
             if (!MagicExists(Spell.ElectricShock)) MagicInfoList.Add(new MagicInfo { Name = "ElectricShock", Spell = Spell.ElectricShock, Icon = 19, Level1 = 13, Level2 = 18, Level3 = 24, Need1 = 530, Need2 = 1100, Need3 = 2200, BaseCost = 3, LevelCost = 1, Range = 9 });
             if (!MagicExists(Spell.GreatFireBall)) MagicInfoList.Add(new MagicInfo { Name = "GreatFireBall", Spell = Spell.GreatFireBall, Icon = 4, Level1 = 15, Level2 = 18, Level3 = 21, Need1 = 2000, Need2 = 2700, Need3 = 3500, BaseCost = 5, LevelCost = 1, MPowerBase = 6, PowerBase = 10, Range = 9 });
             if (!MagicExists(Spell.HellFire)) MagicInfoList.Add(new MagicInfo { Name = "HellFire", Spell = Spell.HellFire, Icon = 8, Level1 = 16, Level2 = 20, Level3 = 24, Need1 = 700, Need2 = 2700, Need3 = 3500, BaseCost = 10, LevelCost = 3, MPowerBase = 14, PowerBase = 6, Range = 0 });
@@ -344,8 +356,8 @@ namespace Server.MirEnvir
             if (!MagicExists(Spell.Blink)) MagicInfoList.Add(new MagicInfo { Name = "Blink", Spell = Spell.Blink, Icon = 20, Level1 = 19, Level2 = 22, Level3 = 25, Need1 = 350, Need2 = 1000, Need3 = 2000, BaseCost = 10, LevelCost = 3, Range = 9 });
             //if (!MagicExists(Spell.FastMove)) MagicInfoList.Add(new MagicInfo { Name = "FastMove", Spell = Spell.ImmortalSkin, Icon = ?, Level1 = ?, Level2 = ?, Level3 = ?, Need1 = ?, Need2 = ?, Need3 = ?, BaseCost = ?, LevelCost = ?, DelayBase = ?, DelayReduction = ? });
             if (!MagicExists(Spell.StormEscape)) MagicInfoList.Add(new MagicInfo { Name = "StormEscape", Spell = Spell.StormEscape, Icon = 23, Level1 = 60, Level2 = 61, Level3 = 62, Need1 = 2200, Need2 = 3300, Need3 = 4400, BaseCost = 65, LevelCost = 8, MPowerBase = 12, PowerBase = 4, Range = 9 });
-            
-            
+
+
             //Taoist
             if (!MagicExists(Spell.Healing)) MagicInfoList.Add(new MagicInfo { Name = "Healing", Spell = Spell.Healing, Icon = 1, Level1 = 7, Level2 = 11, Level3 = 14, Need1 = 150, Need2 = 350, Need3 = 700, BaseCost = 3, LevelCost = 2, MPowerBase = 14, Range = 9 });
             if (!MagicExists(Spell.SpiritSword)) MagicInfoList.Add(new MagicInfo { Name = "SpiritSword", Spell = Spell.SpiritSword, Icon = 3, Level1 = 9, Level2 = 12, Level3 = 15, Need1 = 350, Need2 = 1300, Need3 = 2700, Range = 0 });
@@ -415,12 +427,12 @@ namespace Server.MirEnvir
 
             //Custom
             if (!MagicExists(Spell.Portal)) MagicInfoList.Add(new MagicInfo { Name = "Portal", Spell = Spell.Portal, Icon = 1, Level1 = 7, Level2 = 11, Level3 = 14, Need1 = 150, Need2 = 350, Need3 = 700, BaseCost = 3, LevelCost = 2, Range = 9 });
-        }
+            }
 
         private string CanStartEnvir()
-        {
-            if (Settings.EnforceDBChecks)
             {
+            if (Settings.EnforceDBChecks)
+                {
                 if (StartPoints.Count == 0) return "Cannot start server without start points";
 
                 if (GetMonsterInfo(Settings.SkeletonName, true) == null) return "Cannot start server without mob: " + Settings.SkeletonName;
@@ -463,17 +475,17 @@ namespace Server.MirEnvir
                 if (GetMonsterInfo(Settings.FishingMonster, true) == null) return "Cannot start server without mob: " + Settings.FishingMonster;
 
                 if (GetItemInfo(Settings.RefineOreName) == null) return "Cannot start server without item: " + Settings.RefineOreName;
-            }
+                }
 
             //add intelligent creature checks?
 
             return "true";
-        }
+            }
 
         private void WorkLoop()
-        {
-            try
             {
+            try
+                {
                 Time = Stopwatch.ElapsedMilliseconds;
 
                 long conTime = Time;
@@ -489,135 +501,135 @@ namespace Server.MirEnvir
                 LinkedListNode<MapObject> current = null;
 
                 if (Settings.Multithreaded)
-                {
-                    for (int j = 0; j < MobThreads.Length; j++)
                     {
+                    for (int j = 0; j < MobThreads.Length; j++)
+                        {
                         MobThreads[j] = new MobThread();
                         MobThreads[j].Id = j;
+                        }
                     }
-                }
 
                 StartEnvir();
                 string canstartserver = CanStartEnvir();
                 if (canstartserver != "true")
-                {
+                    {
                     SMain.Enqueue(canstartserver);
                     StopEnvir();
                     _thread = null;
                     Stop();
                     return;
-                }
+                    }
 
                 if (Settings.Multithreaded)
-                {
-                    for (int j = 0; j < MobThreads.Length; j++)
                     {
+                    for (int j = 0; j < MobThreads.Length; j++)
+                        {
                         MobThread Info = MobThreads[j];
                         if (j > 0) //dont start up 0 
-                        {
+                            {
                             MobThreading[j] = new Thread(() => ThreadLoop(Info));
                             MobThreading[j].IsBackground = true;
                             MobThreading[j].Start();
+                            }
                         }
                     }
-                }
 
                 StartNetwork();
 
                 try
-                {
-                    while (Running)
                     {
+                    while (Running)
+                        {
                         Time = Stopwatch.ElapsedMilliseconds;
 
                         if (Time >= processTime)
-                        {
+                            {
                             LastCount = processCount;
                             LastRealCount = processRealCount;
                             processCount = 0;
                             processRealCount = 0;
                             processTime = Time + 1000;
-                        }
+                            }
 
 
                         if (conTime != Time)
-                        {
+                            {
                             conTime = Time;
 
                             AdjustLights();
 
                             lock (Connections)
-                            {
-                                for (int i = Connections.Count - 1; i >= 0; i--)
                                 {
+                                for (int i = Connections.Count - 1; i >= 0; i--)
+                                    {
                                     Connections[i].Process();
+                                    }
                                 }
-                            }
 
                             lock (StatusConnections)
-                            {
-                                for (int i = StatusConnections.Count - 1; i >= 0; i--)
                                 {
+                                for (int i = StatusConnections.Count - 1; i >= 0; i--)
+                                    {
                                     StatusConnections[i].Process();
+                                    }
                                 }
                             }
-                        }
 
 
                         if (current == null)
                             current = Objects.First;
 
                         if (current == Objects.First)
-                        {
+                            {
                             LastRunTime = Time - StartTime;
                             StartTime = Time;
-                        }
+                            }
 
                         if (Settings.Multithreaded)
-                        {
-                            for (int j = 1; j < MobThreads.Length; j++)
                             {
+                            for (int j = 1; j < MobThreads.Length; j++)
+                                {
                                 MobThread Info = MobThreads[j];
 
                                 if (Info.Stop == true)
-                                {
+                                    {
                                     Info.EndTime = Time + 10;
                                     Info.Stop = false;
+                                    }
                                 }
-                            }
                             lock (_locker)
-                            {
+                                {
                                 Monitor.PulseAll(_locker);         // changing a blocking condition. (this makes the threads wake up!)
-                            }
+                                }
                             //run the first loop in the main thread so the main thread automaticaly 'halts' untill the other threads are finished
                             ThreadLoop(MobThreads[0]);
-                        }
+                            }
 
                         Boolean TheEnd = false;
                         long Start = Stopwatch.ElapsedMilliseconds;
                         while ((!TheEnd) && (Stopwatch.ElapsedMilliseconds - Start < 20))
-                        {
-                            if (current == null)
                             {
+                            if (current == null)
+                                {
                                 TheEnd = true;
                                 break;
-                            }
+                                }
                             else
-                            {
+                                {
                                 LinkedListNode<MapObject> next = current.Next;
                                 if (!Settings.Multithreaded || ((current.Value.Race != ObjectType.Monster) || (current.Value.Master != null)))
-                                {
-                                    if (Time > current.Value.OperateTime)
                                     {
+                                    if (Time > current.Value.OperateTime)
+                                        {
 
                                         current.Value.Process();
                                         current.Value.SetOperateTime();
-                                    }
+                                        }
                                     processCount++;
-                                }
+                                    }
                                 current = next;
+                                }
                             }
-                        }
 
                         for (int i = 0; i < MapList.Count; i++)
                             MapList[i].Process();
@@ -627,46 +639,54 @@ namespace Server.MirEnvir
                         Process();
 
                         if (Time >= saveTime)
-                        {
+                            {
                             saveTime = Time + Settings.SaveDelay * Settings.Minute;
-                            BeginSaveAccounts();
+
+                            //BeginSaveAccounts();
+
+                            var AccountListCopy = new List<AccountInfo>(AccountList);
+
+                            _threadProgressDB = new Thread(() => ConnectADB.SaveProgressDB(AccountListCopy));
+                            _threadProgressDB.IsBackground = true;
+                            _threadProgressDB.Start();
+
                             SaveGuilds();
                             SaveGoods();
                             SaveConquests();
-                        }
+                            }
 
-                        if (Time >= userTime)
-                        {
-                            userTime = Time + Settings.Minute * 5;
-                            Broadcast(new S.Chat
-                                {
-                                    Message = string.Format("Online Players: {0}", Players.Count),
-                                    Type = ChatType.Hint
-                                });
-                        }
+                        //  if (Time >= userTime)
+                        //  {
+                        // userTime = Time + Settings.Minute * 5;
+                        // Broadcast(new S.Chat
+                        //     {
+                        //        Message = string.Format("Online Players: {0}", Players.Count),
+                        //        Type = ChatType.Hint
+                        //    });
+                        //  }
 
                         if (Time >= SpawnTime)
-                        {
+                            {
                             SpawnTime = Time + (Settings.Second * 10);//technicaly this limits the respawn tick code to a minimum of 10 second each but lets assume it's not meant to be this accurate
                             SMain.Envir.RespawnTick.Process();
-                        }
+                            }
 
                         //   if (Players.Count == 0) Thread.Sleep(1);
                         //   GC.Collect();
 
 
-                    }
+                        }
 
-                }
+                    }
                 catch (Exception ex)
-                {
+                    {
                     SMain.Enqueue(ex);
 
                     lock (Connections)
-                    {
+                        {
                         for (int i = Connections.Count - 1; i >= 0; i--)
                             Connections[i].SendDisconnect(3);
-                    }
+                        }
 
                     // Get stack trace for the exception with source file information
                     var st = new StackTrace(ex, true);
@@ -677,17 +697,17 @@ namespace Server.MirEnvir
 
                     File.AppendAllText(@".\Error.txt",
                                            string.Format("[{0}] {1} at line {2}{3}", Now, ex, line, Environment.NewLine));
-                }
+                    }
 
                 StopNetwork();
                 StopEnvir();
-                SaveAccounts();
+                // SaveAccounts();
                 SaveGuilds(true);
                 SaveConquests(true);
 
-            }
+                }
             catch (Exception ex)
-            {
+                {
                 // Get stack trace for the exception with source file information
                 var st = new StackTrace(ex, true);
                 // Get the top stack frame
@@ -698,17 +718,17 @@ namespace Server.MirEnvir
                 SMain.Enqueue("[outer workloop error]" + ex);
                 File.AppendAllText(@".\Error.txt",
                                        string.Format("[{0}] {1} at line {2}{3}", Now, ex, line, Environment.NewLine));
-            }
+                }
             _thread = null;
 
-        }
-        
+            }
+
         private void ThreadLoop(MobThread Info)
-        {
+            {
             Info.Stop = false;
             long starttime = Time;
             try
-            {
+                {
 
                 bool stopping = false;
                 if (Info.current == null)
@@ -716,71 +736,71 @@ namespace Server.MirEnvir
                 stopping = Info.current == null;
                 //while (stopping == false)
                 while (Running)
-                {
+                    {
                     if (Info.current == null)
                         Info.current = Info.ObjectsList.First;
                     else
-                    {
+                        {
                         LinkedListNode<MapObject> next = Info.current.Next;
 
                         //if we reach the end of our list > go back to the top (since we are running threaded, we dont want the system to sit there for xxms doing nothing)
                         if (Info.current == Info.ObjectsList.Last)
-                        {
+                            {
                             next = Info.ObjectsList.First;
                             Info.LastRunTime = (Info.LastRunTime + (Time - Info.StartTime)) / 2;
                             //Info.LastRunTime = (Time - Info.StartTime) /*> 0 ? (Time - Info.StartTime) : Info.LastRunTime */;
                             Info.StartTime = Time;
-                        }
+                            }
                         if (Time > Info.current.Value.OperateTime)
-                        {
-                            if (Info.current.Value.Master == null)//since we are running multithreaded, dont allow pets to be processed (unless you constantly move pets into their map appropriate thead)
                             {
+                            if (Info.current.Value.Master == null)//since we are running multithreaded, dont allow pets to be processed (unless you constantly move pets into their map appropriate thead)
+                                {
                                 Info.current.Value.Process();
                                 Info.current.Value.SetOperateTime();
+                                }
                             }
-                        }
                         Info.current = next;
-                    }
+                        }
                     //if it's the main thread > make it loop till the subthreads are done, else make it stop after 'endtime'
                     if (Info.Id == 0)
-                    {
+                        {
                         stopping = true;
                         for (int x = 1; x < MobThreads.Length; x++)
                             if (MobThreads[x].Stop == false)
                                 stopping = false;
                         if (stopping)
-                        {
+                            {
                             Info.Stop = stopping;
                             return;
-                        }
-                    }
-                    else
-                    {
-                        if ((Stopwatch.ElapsedMilliseconds > Info.EndTime) && Running)
-                        {
-                            Info.Stop = true;
-                            lock (_locker)
-                            {
-                                while (Info.Stop) Monitor.Wait(_locker);
                             }
                         }
-                        
+                    else
+                        {
+                        if ((Stopwatch.ElapsedMilliseconds > Info.EndTime) && Running)
+                            {
+                            Info.Stop = true;
+                            lock (_locker)
+                                {
+                                while (Info.Stop) Monitor.Wait(_locker);
+                                }
+                            }
+
+                        }
                     }
                 }
-            }
             catch (Exception ex)
-            {
+                {
                 if (ex is ThreadInterruptedException) return;
                 SMain.Enqueue(ex);
 
                 File.AppendAllText(@".\Error.txt",
                                        string.Format("[{0}] {1}{2}", Now, ex, Environment.NewLine));
-            }
+                }
             //Info.Stop = true;
-        }
+            }
 
         private void AdjustLights()
-        {
+            {
             LightSetting oldLights = Lights;
 
             int hours = (Now.Hour * 2) % 24;
@@ -796,154 +816,102 @@ namespace Server.MirEnvir
             if (oldLights == Lights) return;
 
             Broadcast(new S.TimeOfDay { Lights = Lights });
-        }
-
-        public void Process()
-        {        
-            //if we get to a new day : reset daily's
-            if (Now.Day != DailyTime)
-            {
-                DailyTime = Now.Day;
-                ProcessNewDay();
             }
 
-            if(Time >= warTime)
+        public void Process()
             {
-                for (int i = GuildsAtWar.Count - 1; i >= 0; i--)
+            //if we get to a new day : reset daily's
+            if (Now.Day != DailyTime)
                 {
+                DailyTime = Now.Day;
+                ProcessNewDay();
+                }
+
+            if (Time >= warTime)
+                {
+                for (int i = GuildsAtWar.Count - 1; i >= 0; i--)
+                    {
                     GuildsAtWar[i].TimeRemaining -= Settings.Minute;
 
                     if (GuildsAtWar[i].TimeRemaining < 0)
-                    {
+                        {
                         GuildsAtWar[i].EndWar();
                         GuildsAtWar.RemoveAt(i);
+                        }
                     }
-                }
-                
+
                 warTime = Time + Settings.Minute;
-            }
+                }
 
             if (Time >= mailTime)
-            {
-                for (int i = Mail.Count - 1; i >= 0; i--)
                 {
+                for (int i = Mail.Count - 1; i >= 0; i--)
+                    {
                     MailInfo mail = Mail[i];
 
-                    if(mail.Receive())
-                    {
+                    if (mail.Receive())
+                        {
                         //collected mail ok
+                        }
+                    }
+
+                mailTime = Time + (Settings.Minute * 1);
+                }
+
+            if (Time >= guildTime)
+                {
+                guildTime = Time + (Settings.Minute);
+                for (int i = 0; i < GuildList.Count; i++)
+                    {
+                    GuildList[i].Process();
                     }
                 }
 
-                mailTime = Time + (Settings.Minute * 1);
-            }
-
-            if (Time >= guildTime)
-            {
-                guildTime = Time + (Settings.Minute);
-                for (int i = 0; i < GuildList.Count; i++)
-                {
-                    GuildList[i].Process();
-                }
-            }
-
             if (Time >= conquestTime)
-            {
+                {
                 conquestTime = Time + (Settings.Second * 10);
                 for (int i = 0; i < Conquests.Count; i++)
                     Conquests[i].Process();
+                }
+
+
             }
-
-
-        }
 
         public void Broadcast(Packet p)
-        {
+            {
             for (int i = 0; i < Players.Count; i++) Players[i].Enqueue(p);
-        }
+            }
 
         public void RequiresBaseStatUpdate()
-        {
-            for (int i = 0; i < Players.Count; i++) Players[i].HasUpdatedBaseStats = false;
-        }
-
-        public void SaveDB()
-        {
-            using (FileStream stream = File.Create(DatabasePath))
-            using (BinaryWriter writer = new BinaryWriter(stream))
             {
-                writer.Write(Version);
-                writer.Write(CustomVersion);
-                writer.Write(MapIndex);
-                writer.Write(ItemIndex);
-                writer.Write(MonsterIndex);
-                writer.Write(NPCIndex);
-                writer.Write(QuestIndex);
-                writer.Write(GameshopIndex);
-                writer.Write(ConquestIndex);
-                writer.Write(RespawnIndex);
-
-                writer.Write(MapInfoList.Count);
-                for (int i = 0; i < MapInfoList.Count; i++)
-                    MapInfoList[i].Save(writer);
-
-                writer.Write(ItemInfoList.Count);
-                for (int i = 0; i < ItemInfoList.Count; i++)
-                    ItemInfoList[i].Save(writer);
-
-                writer.Write(MonsterInfoList.Count);
-                for (int i = 0; i < MonsterInfoList.Count; i++)
-                    MonsterInfoList[i].Save(writer);
-
-                writer.Write(NPCInfoList.Count);
-                for (int i = 0; i < NPCInfoList.Count; i++)
-                    NPCInfoList[i].Save(writer);
-
-                writer.Write(QuestInfoList.Count);
-                for (int i = 0; i < QuestInfoList.Count; i++)
-                    QuestInfoList[i].Save(writer);
-
-                DragonInfo.Save(writer);
-                writer.Write(MagicInfoList.Count);
-                for (int i = 0; i < MagicInfoList.Count; i++)
-                    MagicInfoList[i].Save(writer);
-
-                writer.Write(GameShopList.Count);
-                for (int i = 0; i < GameShopList.Count; i++)
-                    GameShopList[i].Save(writer);
-
-                writer.Write(ConquestInfos.Count);
-                for (int i = 0; i < ConquestInfos.Count; i++)
-                    ConquestInfos[i].Save(writer);
-
-                RespawnTick.Save(writer);
+            for (int i = 0; i < Players.Count; i++) Players[i].HasUpdatedBaseStats = false;
             }
-        }
+/*
         public void SaveAccounts()
-        {
+            {
             while (Saving)
                 Thread.Sleep(1);
 
             try
-            {
+                {
                 using (FileStream stream = File.Create(AccountPath + "n"))
                     SaveAccounts(stream);
                 if (File.Exists(AccountPath))
                     File.Move(AccountPath, AccountPath + "o");
                 File.Move(AccountPath + "n", AccountPath);
                 if (File.Exists(AccountPath + "o"))
-                File.Delete(AccountPath + "o");
-            }
+                    File.Delete(AccountPath + "o");
+                }
             catch (Exception ex)
-            {
+                {
                 SMain.Enqueue(ex);
+                }
             }
-        }
 
         private void SaveAccounts(Stream stream)
-        {
-            using (BinaryWriter writer = new BinaryWriter(stream))
             {
+            using (BinaryWriter writer = new BinaryWriter(stream))
+                {
                 writer.Write(Version);
                 writer.Write(CustomVersion);
                 writer.Write(NextAccountID);
@@ -963,31 +931,31 @@ namespace Server.MirEnvir
                 writer.Write(NextMailID);
                 writer.Write(Mail.Count);
                 foreach (MailInfo mail in Mail)
-                        mail.Save(writer);
+                    mail.Save(writer);
 
                 writer.Write(GameshopLog.Count);
                 foreach (var item in GameshopLog)
-                {
+                    {
                     writer.Write(item.Key);
                     writer.Write(item.Value);
-                }
+                    }
 
                 writer.Write(SavedSpawns.Count);
                 foreach (MapRespawn Spawn in SavedSpawns)
-                {
+                    {
                     RespawnSave Save = new RespawnSave { RespawnIndex = Spawn.Info.RespawnIndex, NextSpawnTick = Spawn.NextSpawnTick, Spawned = (Spawn.Count >= (Spawn.Info.Count * spawnmultiplyer)) };
                     Save.save(writer);
+                    }
                 }
             }
-        }
-
+*/
         private void SaveGuilds(bool forced = false)
-        {
+            {
             if (!Directory.Exists(Settings.GuildPath)) Directory.CreateDirectory(Settings.GuildPath);
             for (int i = 0; i < GuildList.Count; i++)
-            {
-                if (GuildList[i].NeedSave || forced)
                 {
+                if (GuildList[i].NeedSave || forced)
+                    {
                     GuildList[i].NeedSave = false;
                     MemoryStream mStream = new MemoryStream();
                     BinaryWriter writer = new BinaryWriter(mStream);
@@ -995,16 +963,16 @@ namespace Server.MirEnvir
                     FileStream fStream = new FileStream(Settings.GuildPath + i.ToString() + ".mgdn", FileMode.Create);
                     byte[] data = mStream.ToArray();
                     fStream.BeginWrite(data, 0, data.Length, EndSaveGuildsAsync, fStream);
+                    }
                 }
             }
-        }
         private void EndSaveGuildsAsync(IAsyncResult result)
-        {
+            {
             FileStream fStream = result.AsyncState as FileStream;
             try
-            {
-                if (fStream != null)
                 {
+                if (fStream != null)
+                    {
                     string oldfilename = fStream.Name.Substring(0, fStream.Name.Length - 1);
                     string newfilename = fStream.Name;
                     fStream.EndWrite(result);
@@ -1014,31 +982,31 @@ namespace Server.MirEnvir
                     File.Move(newfilename, oldfilename);
                     if (File.Exists(oldfilename + "o"))
                         File.Delete(oldfilename + "o");
+                    }
+                }
+            catch (Exception ex)
+                {
                 }
             }
-            catch (Exception ex)
-            {
-            }
-        }
 
         private void SaveGoods(bool forced = false)
-        {
+            {
             if (!Directory.Exists(Settings.GoodsPath)) Directory.CreateDirectory(Settings.GoodsPath);
 
             for (int i = 0; i < MapList.Count; i++)
-            {
+                {
                 Map map = MapList[i];
 
                 if (map.NPCs.Count < 1) continue;
 
                 for (int j = 0; j < map.NPCs.Count; j++)
-                {
+                    {
                     NPCObject npc = map.NPCs[j];
 
                     if (forced)
-                    {
+                        {
                         npc.ProcessGoods(forced);
-                    }
+                        }
 
                     if (!npc.NeedSave) continue;
 
@@ -1053,23 +1021,23 @@ namespace Server.MirEnvir
                     writer.Write(npc.UsedGoods.Count);
 
                     for (int k = 0; k < npc.UsedGoods.Count; k++)
-                    {
+                        {
                         npc.UsedGoods[k].Save(writer);
-                    }
+                        }
 
                     FileStream fStream = new FileStream(path, FileMode.Create);
                     byte[] data = mStream.ToArray();
                     fStream.BeginWrite(data, 0, data.Length, EndSaveGoodsAsync, fStream);
+                    }
                 }
             }
-        }
         private void EndSaveGoodsAsync(IAsyncResult result)
-        {
-            try
             {
+            try
+                {
                 FileStream fStream = result.AsyncState as FileStream;
                 if (fStream != null)
-                {
+                    {
                     string oldfilename = fStream.Name.Substring(0, fStream.Name.Length - 1);
                     string newfilename = fStream.Name;
                     fStream.EndWrite(result);
@@ -1079,21 +1047,21 @@ namespace Server.MirEnvir
                     File.Move(newfilename, oldfilename);
                     if (File.Exists(oldfilename + "o"))
                         File.Delete(oldfilename + "o");
+                    }
                 }
-            }
             catch (Exception ex)
-            {
-            }
+                {
+                }
 
-        }
+            }
 
         private void SaveConquests(bool forced = false)
-        {
+            {
             if (!Directory.Exists(Settings.ConquestsPath)) Directory.CreateDirectory(Settings.ConquestsPath);
             for (int i = 0; i < Conquests.Count; i++)
-            {
-                if (Conquests[i].NeedSave || forced)
                 {
+                if (Conquests[i].NeedSave || forced)
+                    {
                     Conquests[i].NeedSave = false;
                     MemoryStream mStream = new MemoryStream();
                     BinaryWriter writer = new BinaryWriter(mStream);
@@ -1101,16 +1069,16 @@ namespace Server.MirEnvir
                     FileStream fStream = new FileStream(Settings.ConquestsPath + Conquests[i].Info.Index.ToString() + ".mcdn", FileMode.Create);
                     byte[] data = mStream.ToArray();
                     fStream.BeginWrite(data, 0, data.Length, EndSaveConquestsAsync, fStream);
+                    }
                 }
             }
-        }
         private void EndSaveConquestsAsync(IAsyncResult result)
-        {
+            {
             FileStream fStream = result.AsyncState as FileStream;
             try
-            {
-                if (fStream != null)
                 {
+                if (fStream != null)
+                    {
                     string oldfilename = fStream.Name.Substring(0, fStream.Name.Length - 1);
                     string newfilename = fStream.Name;
                     fStream.EndWrite(result);
@@ -1120,46 +1088,46 @@ namespace Server.MirEnvir
                     File.Move(newfilename, oldfilename);
                     if (File.Exists(oldfilename + "o"))
                         File.Delete(oldfilename + "o");
+                    }
+                }
+            catch (Exception ex)
+                {
+
                 }
             }
-            catch (Exception ex)
-            {
-                
-            }
-        }
-
+/*
         public void BeginSaveAccounts()
-        {
+            {
             if (Saving) return;
 
             Saving = true;
-            
+
 
             using (MemoryStream mStream = new MemoryStream())
-            {
-                if (File.Exists(AccountPath))
                 {
+                if (File.Exists(AccountPath))
+                    {
                     if (!Directory.Exists(BackUpPath)) Directory.CreateDirectory(BackUpPath);
                     string fileName = string.Format("Accounts {0:0000}-{1:00}-{2:00} {3:00}-{4:00}-{5:00}.bak", Now.Year, Now.Month, Now.Day, Now.Hour, Now.Minute, Now.Second);
                     if (File.Exists(Path.Combine(BackUpPath, fileName))) File.Delete(Path.Combine(BackUpPath, fileName));
                     File.Move(AccountPath, Path.Combine(BackUpPath, fileName));
-                }
+                    }
 
                 SaveAccounts(mStream);
                 FileStream fStream = new FileStream(AccountPath + "n", FileMode.Create);
 
                 byte[] data = mStream.ToArray();
                 fStream.BeginWrite(data, 0, data.Length, EndSaveAccounts, fStream);
-            }
+                }
 
-        }
+            }
         private void EndSaveAccounts(IAsyncResult result)
-        {
+            {
             FileStream fStream = result.AsyncState as FileStream;
             try
-            {
-                if (fStream != null)
                 {
+                if (fStream != null)
+                    {
                     string oldfilename = fStream.Name.Substring(0, fStream.Name.Length - 1);
                     string newfilename = fStream.Name;
                     fStream.EndWrite(result);
@@ -1169,174 +1137,1420 @@ namespace Server.MirEnvir
                     File.Move(newfilename, oldfilename);
                     if (File.Exists(oldfilename + "o"))
                         File.Delete(oldfilename + "o");
+                    }
                 }
-            }
             catch (Exception ex)
-            {
-            }
+                {
+                }
 
             Saving = false;
-        }
-
-        public void LoadDB()
-        {
-            lock (LoadLock)
+            }
+   */
+        #region Function SaveDB
+        public void SaveItemDB(ItemInfo info)
             {
-                if (!File.Exists(DatabasePath))
-                    SaveDB();
-
-                using (FileStream stream = File.OpenRead(DatabasePath))
-                using (BinaryReader reader = new BinaryReader(stream))
+            try
                 {
-                    LoadVersion = reader.ReadInt32();
-                    if (LoadVersion > 57)
-                        LoadCustomVersion = reader.ReadInt32();
-                    MapIndex = reader.ReadInt32();
-                    ItemIndex = reader.ReadInt32();
-                    MonsterIndex = reader.ReadInt32();
 
-                    if (LoadVersion > 33)
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string sqlCommand;
+                int count;
+
+                string query = "SELECT COUNT(*) FROM  " + Settings.DBServer + ".iteminfo WHERE IndexID=" + info.Index;
+                using (var cmd = new MySqlCommand(query, connection))
                     {
-                        NPCIndex = reader.ReadInt32();
-                        QuestIndex = reader.ReadInt32();
-                    }
-                    if (LoadVersion >= 63)
-                    {
-                        GameshopIndex = reader.ReadInt32();
-                    }
+                    count = Convert.ToInt32(cmd.ExecuteScalar());
 
-                    if (LoadVersion >= 66)
-                    {
-                        ConquestIndex = reader.ReadInt32();
-                    }
-
-                    if (LoadVersion >= 68)
-                        RespawnIndex = reader.ReadInt32();
-
-
-                    int count = reader.ReadInt32();
-                    MapInfoList.Clear();
-                    for (int i = 0; i < count; i++)
-                        MapInfoList.Add(new MapInfo(reader));
-
-                    count = reader.ReadInt32();
-                    ItemInfoList.Clear();
-                    for (int i = 0; i < count; i++)
-                    {
-                        ItemInfoList.Add(new ItemInfo(reader, LoadVersion, LoadCustomVersion));
-                        if ((ItemInfoList[i] != null) && (ItemInfoList[i].RandomStatsId < Settings.RandomItemStatsList.Count))
+                    if (count == 0)
                         {
-                            ItemInfoList[i].RandomStats = Settings.RandomItemStatsList[ItemInfoList[i].RandomStatsId];
+
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".ItemInfo ( Accuracy, Agility, AttackSpeed, BagWeight, CanAwakening, CanFastRun, CanMine, ClassBased, ShowGroupPickup, CriticalDamage, CriticalRate, Effect, Freezing, SpellRecovery, HandWeight, HealthRecovery, Holy, HpDrainRate, HPrate, Light, Luck, LevelBased, NeedIdentify, StartItem, MagicResist, MaxAC, MaxAcRate, MaxDC, MaxMAC, MaxMacRate, MaxMC, MaxSC, MinAC, MinDC, MinMAC, MinMC, MinSC, MPrate, PoisonAttack, PoisonRecovery, PoisonResist, RandomStatsId, Reflect, RequiredAmount, Strong, WearWeight, Weight, Price, StackSize, Bind, Grade, Name, RequiredClass, Type, Unique_, ToolTip, RequiredGender, RequiredType, Set_, HP, MP, Image, Shape, Durability, IndexID) VALUES (@Accuracy, @Agility, @AttackSpeed, @BagWeight, @CanAwakening, @CanFastRun, @CanMine, @ClassBased, @ShowGroupPickup, @CriticalDamage, @CriticalRate, @Effect, @Freezing, @SpellRecovery,  @HandWeight, @HealthRecovery, @Holy, @HpDrainRate, @HPrate, @Light, @Luck, @LevelBased, @NeedIdentify, @StartItem, @MagicResist, @MaxAC, @MaxAcRate, @MaxDC, @MaxMAC, @MaxMacRate, @MaxMC, @MaxSC, @MinAC, @MinDC, @MinMAC, @MinMC, @MinSC, @MPrate, @PoisonAttack, @PoisonRecovery, @PoisonResist, @RandomStatsId, @Reflect, @RequiredAmount, @Strong, @WearWeight, @Weight, @Price, @StackSize, @Bind, @Grade, @Name, @RequiredClass, @Type, @Unique_, @ToolTip, @RequiredGender, @RequiredType, @Set_, @HP, @MP, @Image, @Shape, @Durability, @IndexID)";
+
+                        }
+
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".ItemInfo SET Accuracy = @Accuracy, Agility = @Agility, AttackSpeed = @AttackSpeed, BagWeight = @BagWeight, CanAwakening = @CanAwakening, CanFastRun = @CanFastRun, CanMine = @CanMine, ClassBased = @ClassBased, ShowGroupPickup = @ShowGroupPickup, CriticalDamage = @CriticalDamage, CriticalRate = @CriticalRate, Effect = @Effect, Freezing = @Freezing, SpellRecovery = @SpellRecovery, HandWeight = @HandWeight, HealthRecovery = @HealthRecovery, Holy = @Holy, HpDrainRate = @HpDrainRate, HPrate = @HPrate, Light = @Light, Luck = @Luck, LevelBased = @LevelBased,  NeedIdentify = @NeedIdentify, StartItem = @StartItem, MagicResist = @MagicResist,  MaxAC = @MaxAC,  MaxAcRate = @MaxAcRate, MaxDC = @MaxDC, MaxMAC = @MaxMAC, MaxMacRate = @MaxMacRate, MaxMC = @MaxMC, MaxSC = @MaxSC, MinAC = @MinAC, MinDC = @MinDC,  MinMAC = @MinMAC, MinMC = @MinMC,  MinSC = @MinSC, MPrate = @MPrate, PoisonAttack = @PoisonAttack, PoisonRecovery = @PoisonRecovery, PoisonResist = @PoisonResist, RandomStatsId = @RandomStatsId, Reflect = @Reflect, RequiredAmount = @RequiredAmount, Strong = @Strong, WearWeight = @WearWeight,  Weight = @Weight,  Price = @Price,  StackSize = @StackSize, Bind = @Bind,  Grade = @Grade, Name = @Name,  RequiredClass = @RequiredClass,  Type = @Type,  Unique_ = @Unique_, ToolTip = @ToolTip, RequiredGender = @RequiredGender, RequiredType = @RequiredType, Set_ = @Set_, HP = @HP,  MP = @MP, Image = @Image, Shape = @Shape, Durability = @Durability  WHERE IndexID = " + info.Index + "";
                         }
                     }
-                    count = reader.ReadInt32();
-                    MonsterInfoList.Clear();
-                    for (int i = 0; i < count; i++)
-                        MonsterInfoList.Add(new MonsterInfo(reader));
 
-                    if (LoadVersion > 33)
+                using (var command = new MySqlCommand(sqlCommand, connection))
                     {
-                        count = reader.ReadInt32();
-                        NPCInfoList.Clear();
-                        for (int i = 0; i < count; i++)
-                            NPCInfoList.Add(new NPCInfo(reader));
-
-                        count = reader.ReadInt32();
-                        QuestInfoList.Clear();
-                        for (int i = 0; i < count; i++)
-                            QuestInfoList.Add(new QuestInfo(reader));
-                    }
-
-                    if (LoadVersion >= 11) DragonInfo = new DragonInfo(reader);
-                    else DragonInfo = new DragonInfo();
-                    if (LoadVersion >= 58)
-                    {
-                        count = reader.ReadInt32();
-                        for (int i = 0; i < count; i++)
-                            MagicInfoList.Add(new MagicInfo(reader, LoadVersion, LoadCustomVersion));
-                    }
-                    FillMagicInfoList();
-                    if (LoadVersion <= 70)
-                        UpdateMagicInfo();
-
-                    if (LoadVersion >= 63)
-                    {
-                        count = reader.ReadInt32();
-                        GameShopList.Clear();
-                        for (int i = 0; i < count; i++)
+                    if (count == 0)
                         {
-                            GameShopItem item = new GameShopItem(reader, LoadVersion, LoadCustomVersion);
-                            if (SMain.Envir.BindGameShop(item))
+                        command.Parameters.AddWithValue("@IndexID", info.Index);
+                        }
+                    command.Parameters.AddWithValue("@Accuracy", info.Accuracy);
+                    command.Parameters.AddWithValue("@Agility", info.Agility);
+                    command.Parameters.AddWithValue("@AttackSpeed", info.AttackSpeed);
+                    command.Parameters.AddWithValue("@BagWeight", info.BagWeight);
+                    command.Parameters.AddWithValue("@CanAwakening", info.CanAwakening);
+                    command.Parameters.AddWithValue("@CanFastRun", info.CanFastRun);
+                    command.Parameters.AddWithValue("@CanMine", info.CanMine);
+                    command.Parameters.AddWithValue("@ClassBased", info.ClassBased);
+                    command.Parameters.AddWithValue("@ShowGroupPickup", info.ShowGroupPickup);
+                    command.Parameters.AddWithValue("@CriticalDamage", info.CriticalDamage);
+                    command.Parameters.AddWithValue("@CriticalRate", info.CriticalRate);
+                    command.Parameters.AddWithValue("@Effect", info.Effect);
+                    command.Parameters.AddWithValue("@Freezing", info.Freezing);
+                    command.Parameters.AddWithValue("@SpellRecovery", info.SpellRecovery);
+                    command.Parameters.AddWithValue("@HandWeight", info.HandWeight);
+                    command.Parameters.AddWithValue("@HealthRecovery", info.HealthRecovery);
+                    command.Parameters.AddWithValue("@Holy", info.Holy);
+                    command.Parameters.AddWithValue("@HpDrainRate", info.HpDrainRate);
+                    command.Parameters.AddWithValue("@HPrate", info.HPrate);
+                    command.Parameters.AddWithValue("@Light", info.Light);
+                    command.Parameters.AddWithValue("@Luck", info.Luck);
+                    command.Parameters.AddWithValue("@LevelBased", info.LevelBased);
+                    command.Parameters.AddWithValue("@NeedIdentify", info.NeedIdentify);
+                    command.Parameters.AddWithValue("@StartItem", info.StartItem);
+                    command.Parameters.AddWithValue("@MagicResist", info.MagicResist);
+                    command.Parameters.AddWithValue("@MaxAC", info.MaxAC);
+                    command.Parameters.AddWithValue("@MaxAcRate", info.MaxAcRate);
+                    command.Parameters.AddWithValue("@MaxDC", info.MaxDC);
+                    command.Parameters.AddWithValue("@MaxMAC", info.MaxMAC);
+                    command.Parameters.AddWithValue("@MaxMacRate", info.MaxMacRate);
+                    command.Parameters.AddWithValue("@MaxMC", info.MaxMC);
+                    command.Parameters.AddWithValue("@MaxSC", info.MaxSC);
+                    command.Parameters.AddWithValue("@MinAC", info.MinAC);
+                    command.Parameters.AddWithValue("@MinDC", info.MinDC);
+                    command.Parameters.AddWithValue("@MinMAC", info.MinMAC);
+                    command.Parameters.AddWithValue("@MinMC", info.MinMC);
+                    command.Parameters.AddWithValue("@MinSC", info.MinSC);
+                    command.Parameters.AddWithValue("@MPrate", info.MPrate);
+                    command.Parameters.AddWithValue("@PoisonAttack", info.PoisonAttack);
+                    command.Parameters.AddWithValue("@PoisonRecovery", info.PoisonRecovery);
+                    command.Parameters.AddWithValue("@PoisonResist", info.PoisonResist);
+                    command.Parameters.AddWithValue("@RandomStatsId", info.RandomStatsId);
+                    command.Parameters.AddWithValue("@Reflect", info.Reflect);
+                    command.Parameters.AddWithValue("@RequiredAmount", info.RequiredAmount);
+                    command.Parameters.AddWithValue("@Strong", info.Strong);
+                    command.Parameters.AddWithValue("@WearWeight", info.WearWeight);
+                    command.Parameters.AddWithValue("@Weight", info.Weight);
+                    command.Parameters.AddWithValue("@Price", info.Price);
+                    command.Parameters.AddWithValue("@StackSize", info.StackSize);
+                    command.Parameters.AddWithValue("@Bind", info.Bind);
+                    command.Parameters.AddWithValue("@Grade", info.Grade);
+                    command.Parameters.AddWithValue("@Name", info.Name);
+                    command.Parameters.AddWithValue("@RequiredClass", info.RequiredClass);
+                    command.Parameters.AddWithValue("@Type", info.Type);
+                    command.Parameters.AddWithValue("@Unique_", info.Unique);
+                    command.Parameters.AddWithValue("@ToolTip", info.ToolTip);
+                    command.Parameters.AddWithValue("@RequiredGender", info.RequiredGender);
+                    command.Parameters.AddWithValue("@RequiredType", info.RequiredType);
+                    command.Parameters.AddWithValue("@Set_", info.Set);
+                    command.Parameters.AddWithValue("@HP", info.HP);
+                    command.Parameters.AddWithValue("@MP", info.MP);
+                    command.Parameters.AddWithValue("@Image", info.Image);
+                    command.Parameters.AddWithValue("@Shape", info.Shape);
+                    command.Parameters.AddWithValue("@Durability", info.Durability);
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void SaveGameShop(GameShopItem info)
+            {
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string sqlCommand;
+                string query = "SELECT COUNT(*) FROM  " + Settings.DBServer + ".gameshopitem WHERE GIndex = " + info.GIndex;
+                using (var cmd = new MySqlCommand(query, connection))
+                    {
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (count == 0)
+                        {
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".gameshopitem (ItemIndex, GIndex, GoldPrice, CreditPrice, Count, Stock, Class, Category, iStock, Deal, TopItem, Date) VALUES (@ItemIndex, @GIndex, @GoldPrice, @CreditPrice, @Count, @Stock, @Class, @Category, @iStock, @Deal, @TopItem, @Date)";
+                        }
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".gameshopitem SET ItemIndex = @ItemIndex, GoldPrice = @GoldPrice, GIndex = @GIndex, CreditPrice = @CreditPrice, Count = @Count, Stock = @Stock, Class = @Class, Category = @Category,  iStock = @iStock, Deal = @Deal, TopItem = @TopItem, Date = @Date WHERE GIndex = " + info.GIndex;
+                        }
+                    }
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@ItemIndex", info.ItemIndex);
+                    command.Parameters.AddWithValue("@GoldPrice", info.GoldPrice);
+                    command.Parameters.AddWithValue("@GIndex", info.GIndex);
+                    command.Parameters.AddWithValue("@CreditPrice", info.CreditPrice);
+                    command.Parameters.AddWithValue("@Count", info.Count);
+                    command.Parameters.AddWithValue("@Stock", info.Stock);
+                    command.Parameters.AddWithValue("@Class", info.Class);
+                    command.Parameters.AddWithValue("@Category", info.Category);
+                    command.Parameters.AddWithValue("@iStock", info.iStock);
+                    command.Parameters.AddWithValue("@Deal", info.Deal);
+                    command.Parameters.AddWithValue("@TopItem", info.TopItem);
+                    command.Parameters.AddWithValue("@Date", info.Date);
+
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void SaveDragonDB()
+            {
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string sqlCommand;
+                string query = "SELECT COUNT(*) FROM  " + Settings.DBServer + ".dragoninfo WHERE IndexID = 1";
+                using (var cmd = new MySqlCommand(query, connection))
+                    {
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (count == 0)
+                        {
+
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".dragoninfo ( Enabled, MapFileName, MonsterName, BodyName, Location_X, Location_Y, DropAreaTop_X, DropAreaTop_Y, DropAreaBottom_X, DropAreaBottom_Y, Exps_0, Exps_1, Exps_2, Exps_3, Exps_4, Exps_5, Exps_6, Exps_7, Exps_8, Exps_9, Exps_10, Exps_11) VALUES (@Enabled, @MapFileName, @MonsterName, @BodyName, @Location_X, @Location_Y, @DropAreaTop_X, @DropAreaTop_Y, @DropAreaBottom_X, @DropAreaBottom_Y, @Exps_0, @Exps_1, @Exps_2, @Exps_3, @Exps_4, @Exps_5, @Exps_6, @Exps_7, @Exps_8, @Exps_9, @Exps_10, @Exps_11)";
+
+                        }
+
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".dragoninfo SET Enabled = @Enabled, MapFileName = @MapFileName, MonsterName = @MonsterName, BodyName = @BodyName, Location_X = @Location_X, Location_Y = @Location_Y, DropAreaTop_X = @DropAreaTop_X, DropAreaTop_Y = @DropAreaTop_Y, DropAreaBottom_X = @DropAreaBottom_X, DropAreaBottom_Y = @DropAreaBottom_Y, Exps_0 = @Exps_0, Exps_1 = @Exps_1, Exps_2 = @Exps_2, Exps_3 = @Exps_3,  Exps_4 = @Exps_4, Exps_5 = @Exps_5, Exps_6 = @Exps_6,  Exps_7 = @Exps_7, Exps_8 = @Exps_8, Exps_9 = @Exps_9, Exps_10 = @Exps_10, Exps_11 = @Exps_11 WHERE IndexID = 1";
+                        }
+                    }
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@Enabled", DragonInfo.Enabled);
+                    command.Parameters.AddWithValue("@MapFileName", DragonInfo.MapFileName);
+                    command.Parameters.AddWithValue("@MonsterName", DragonInfo.MonsterName);
+                    command.Parameters.AddWithValue("@BodyName", DragonInfo.BodyName);
+                    command.Parameters.AddWithValue("@Location_X", DragonInfo.Location.X);
+                    command.Parameters.AddWithValue("@Location_Y", DragonInfo.Location.Y);
+                    command.Parameters.AddWithValue("@DropAreaTop_X", DragonInfo.DropAreaTop.X);
+                    command.Parameters.AddWithValue("@DropAreaTop_Y", DragonInfo.DropAreaTop.Y);
+                    command.Parameters.AddWithValue("@DropAreaBottom_X", DragonInfo.DropAreaBottom.X);
+                    command.Parameters.AddWithValue("@DropAreaBottom_Y", DragonInfo.DropAreaBottom.Y);
+
+                    for (int i = 0; i < DragonInfo.Exps.Length; i++)
+                        {
+                        command.Parameters.AddWithValue("@Exps_" + i, DragonInfo.Exps[i]);
+                        }
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void SaveRespawnTimer()
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                var query_respanwt = "DELETE FROM  " + Settings.DBServer + ".respawntimer; DELETE FROM  " + Settings.DBServer + ".respawntickoption";
+
+                using (var Remove = new MySqlCommand(query_respanwt, connection))
+                    {
+                    //Remove.Parameters.AddWithValue("@IndexID", _selectedMonsterInfos[i].Index);
+                    Remove.ExecuteNonQuery();
+                    Remove.Dispose();
+                    }
+
+                var sqlCommand_respanwt = "INSERT INTO  " + Settings.DBServer + ".respawntimer ( BaseSpawnRate, CurrentTickcounter) VALUES (@BaseSpawnRate, @CurrentTickcounter)";
+
+                using (var command = new MySqlCommand(sqlCommand_respanwt, connection))
+                    {
+                    command.Parameters.AddWithValue("@BaseSpawnRate", RespawnTick.BaseSpawnRate);
+                    command.Parameters.AddWithValue("@CurrentTickcounter", RespawnTick.CurrentTickcounter);
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                foreach (RespawnTickOption Option in RespawnTick.Respawn)
+                    {
+
+                    var sqlCommand_respanw = "INSERT INTO  " + Settings.DBServer + ".respawntickoption ( UserCount, DelayLoss) VALUES (@UserCount, @DelayLoss)";
+
+                    using (var command = new MySqlCommand(sqlCommand_respanw, connection))
+                        {
+                        command.Parameters.AddWithValue("@UserCount", Option.UserCount);
+                        command.Parameters.AddWithValue("@DelayLoss", Option.DelayLoss);
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void SaveConquestInfo()
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                var query_conquestsiegeinfo = "DELETE FROM  " + Settings.DBServer + ".conquestarcherinfo; DELETE FROM  " + Settings.DBServer + ".conquestextramaps; DELETE FROM  " + Settings.DBServer + ".conquestflag; DELETE FROM  " + Settings.DBServer + ".conquestgateinfo; DELETE FROM  " + Settings.DBServer + ".conquestinfo; DELETE FROM  " + Settings.DBServer + ".conquestsiegeinfo; DELETE FROM  " + Settings.DBServer + ".conquestwallinfo; DELETE FROM  " + Settings.DBServer + ".conquestpoint";
+
+                using (var Remove = new MySqlCommand(query_conquestsiegeinfo, connection))
+                    {
+                    Remove.ExecuteNonQuery();
+                    Remove.Dispose();
+
+                    }
+
+                foreach (ConquestInfo Option in ConquestInfos)
+                    {
+
+                    var sqlCommand = "INSERT INTO  " + Settings.DBServer + ".conquestinfo (IndexID, Location_X, Location_Y, Size, Name, MapIndex, PalaceIndex, GuardIndex, GateIndex, WallIndex, SiegeIndex, WarLength, StartHour, Type, Game, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, KingLocation_X, KingLocation_Y, KingSize, FullMap, ControlPointIndex) VALUES (@IndexID, @Location_X, @Location_Y, @Size, @Name, @MapIndex, @PalaceIndex, @GuardIndex, @GateIndex, @WallIndex, @SiegeIndex, @WarLength,  @StartHour, @Type, @Game, @Monday, @Tuesday, @Wednesday, @Thursday, @Friday, @Saturday, @Sunday, @KingLocation_X, @KingLocation_Y, @KingSize, @FullMap, @ControlPointIndex)";
+
+                    using (var command = new MySqlCommand(sqlCommand, connection))
+                        {
+                        command.Parameters.AddWithValue("@IndexID", Option.Index);
+                        command.Parameters.AddWithValue("@Location_X", Option.Location.X);
+                        command.Parameters.AddWithValue("@Location_Y", Option.Location.Y);
+                        command.Parameters.AddWithValue("@Size", Option.Size);
+                        command.Parameters.AddWithValue("@Name", Option.Name);
+                        command.Parameters.AddWithValue("@MapIndex", Option.MapIndex);
+                        command.Parameters.AddWithValue("@PalaceIndex", Option.PalaceIndex);
+                        command.Parameters.AddWithValue("@GuardIndex", Option.GuardIndex);
+                        command.Parameters.AddWithValue("@GateIndex", Option.GateIndex);
+                        command.Parameters.AddWithValue("@WallIndex", Option.WallIndex);
+                        command.Parameters.AddWithValue("@SiegeIndex", Option.SiegeIndex);
+                        command.Parameters.AddWithValue("@WarLength", Option.WarLength);
+                        command.Parameters.AddWithValue("@StartHour", Option.StartHour);
+                        command.Parameters.AddWithValue("@Type", Option.Type);
+                        command.Parameters.AddWithValue("@Game", Option.Game);
+                        command.Parameters.AddWithValue("@Monday", Option.Monday);
+                        command.Parameters.AddWithValue("@Tuesday", Option.Tuesday);
+                        command.Parameters.AddWithValue("@Wednesday", Option.Wednesday);
+                        command.Parameters.AddWithValue("@Thursday", Option.Thursday);
+                        command.Parameters.AddWithValue("@Friday", Option.Friday);
+                        command.Parameters.AddWithValue("@Saturday", Option.Saturday);
+                        command.Parameters.AddWithValue("@Sunday", Option.Sunday);
+                        command.Parameters.AddWithValue("@KingLocation_X", Option.KingLocation.X);
+                        command.Parameters.AddWithValue("@KingLocation_Y", Option.KingLocation.Y);
+                        command.Parameters.AddWithValue("@KingSize", Option.KingSize);
+                        command.Parameters.AddWithValue("@FullMap", Option.FullMap);
+                        command.Parameters.AddWithValue("@FlagIndex", Option.FlagIndex);
+                        command.Parameters.AddWithValue("@ControlPointIndex", Option.ControlPointIndex);
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+
+                    for (int i = 0; i < Option.ControlPoints.Count; i++)
+                        {
+                        var sqlCommand_Flag = "INSERT INTO  " + Settings.DBServer + ".conquestpoint (IndexID, Location_X, Location_Y, FileName, Name) VALUES (@IndexID, @Location_X, @Location_Y, @FileName, @Name)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Flag, connection))
                             {
-                                GameShopList.Add(item);
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ControlPoints[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ControlPoints[i].Location.Y);
+                            command.Parameters.AddWithValue("@FileName", Option.ControlPoints[i].FileName);
+                            command.Parameters.AddWithValue("@Name", Option.ControlPoints[i].Name);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+                    for (int i = 0; i < Option.ExtraMaps.Count; i++)
+                        {
+                        var sqlCommand_ExtraMaps = "INSERT INTO  " + Settings.DBServer + ".conquestextramaps (IndexID, ExtraMaps) VALUES (@IndexID, @ExtraMaps)";
+
+                        using (var command = new MySqlCommand(sqlCommand_ExtraMaps, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@ExtraMaps", Option.ExtraMaps[i]);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+
+                    for (int i = 0; i < Option.ConquestGuards.Count; i++)
+                        {
+                        var sqlCommand_Guards = "INSERT INTO  " + Settings.DBServer + ".conquestarcherinfo (IndexID, Location_X, Location_Y, MobIndex, Name, RepairCost) VALUES (@IndexID, @Location_X, @Location_Y, @MobIndex, @Name, @RepairCost)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Guards, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ConquestGuards[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ConquestGuards[i].Location.Y);
+                            command.Parameters.AddWithValue("@MobIndex", Option.ConquestGuards[i].MobIndex);
+                            command.Parameters.AddWithValue("@Name", Option.ConquestGuards[i].Name);
+                            command.Parameters.AddWithValue("@RepairCost", Option.ConquestGuards[i].RepairCost);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+                    for (int i = 0; i < Option.ConquestGates.Count; i++)
+                        {
+                        var sqlCommand_Guards = "INSERT INTO  " + Settings.DBServer + ".conquestgateinfo (IndexID, Location_X, Location_Y, MobIndex, Name, RepairCost) VALUES (@IndexID, @Location_X, @Location_Y, @MobIndex, @Name, @RepairCost)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Guards, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ConquestGates[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ConquestGates[i].Location.Y);
+                            command.Parameters.AddWithValue("@MobIndex", Option.ConquestGates[i].MobIndex);
+                            command.Parameters.AddWithValue("@Name", Option.ConquestGates[i].Name);
+                            command.Parameters.AddWithValue("@RepairCost", Option.ConquestGates[i].RepairCost);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+
+                    for (int i = 0; i < Option.ConquestWalls.Count; i++)
+                        {
+                        var sqlCommand_Walls = "INSERT INTO  " + Settings.DBServer + ".conquestwallinfo (IndexID, Location_X, Location_Y, MobIndex, Name, RepairCost) VALUES (@IndexID, @Location_X, @Location_Y, @MobIndex, @Name, @RepairCost)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Walls, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ConquestWalls[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ConquestWalls[i].Location.Y);
+                            command.Parameters.AddWithValue("@MobIndex", Option.ConquestWalls[i].MobIndex);
+                            command.Parameters.AddWithValue("@Name", Option.ConquestWalls[i].Name);
+                            command.Parameters.AddWithValue("@RepairCost", Option.ConquestWalls[i].RepairCost);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+                    for (int i = 0; i < Option.ConquestSieges.Count; i++)
+                        {
+                        var sqlCommand_Sieges = "INSERT INTO  " + Settings.DBServer + ".conquestsiegeinfo (IndexID, Location_X, Location_Y, MobIndex, Name, RepairCost) VALUES (@IndexID, @Location_X, @Location_Y, @MobIndex, @Name, @RepairCost)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Sieges, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ConquestSieges[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ConquestSieges[i].Location.Y);
+                            command.Parameters.AddWithValue("@MobIndex", Option.ConquestSieges[i].MobIndex);
+                            command.Parameters.AddWithValue("@Name", Option.ConquestSieges[i].Name);
+                            command.Parameters.AddWithValue("@RepairCost", Option.ConquestSieges[i].RepairCost);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
+                            }
+                        }
+
+                    for (int i = 0; i < Option.ConquestFlags.Count; i++)
+                        {
+                        var sqlCommand_Flag = "INSERT INTO  " + Settings.DBServer + ".conquestflag (IndexID, Location_X, Location_Y, FileName, Name) VALUES (@IndexID, @Location_X, @Location_Y, @FileName, @Name)";
+
+                        using (var command = new MySqlCommand(sqlCommand_Flag, connection))
+                            {
+                            command.Parameters.AddWithValue("@IndexID", Option.Index);
+                            command.Parameters.AddWithValue("@Location_X", Option.ConquestFlags[i].Location.X);
+                            command.Parameters.AddWithValue("@Location_Y", Option.ConquestFlags[i].Location.Y);
+                            command.Parameters.AddWithValue("@FileName", Option.ConquestFlags[i].FileName);
+                            command.Parameters.AddWithValue("@Name", Option.ConquestFlags[i].Name);
+                            command.ExecuteNonQuery();
+                            command.Dispose();
                             }
                         }
                     }
 
-                    if (LoadVersion >= 66)
-                    {
-                        ConquestInfos.Clear();
-                        count = reader.ReadInt32();
-                        for (int i = 0; i < count; i++)
-                        {
-                            ConquestInfos.Add(new ConquestInfo(reader));
-                        }
-                    }
-
-                    if (LoadVersion > 67)
-                        RespawnTick = new RespawnTimer(reader);
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
                 }
 
-                Settings.LinkGuildCreationItems(ItemInfoList);
             }
+        public void SaveDB()
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string create = "CREATE DATABASE IF NOT EXISTS `" + Settings.DBServer + "`;USE `" + Settings.DBServer + "`;CREATE TABLE IF NOT EXISTS `conquestarcherinfo` (  `IndexID` int(20) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `MobIndex` int(20) DEFAULT NULL,  `Name` varchar(50) NOT NULL DEFAULT '0',  `RepairCost` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestextramaps` (  `IndexID` int(20) DEFAULT NULL,  `ExtraMaps` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestflag` (  `IndexID` int(20) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `Name` varchar(50) NOT NULL DEFAULT '0',  `FileName` varchar(50) NOT NULL DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestgateinfo` (  `IndexID` int(20) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `MobIndex` int(20) DEFAULT NULL,  `Name` varchar(50) NOT NULL DEFAULT '0',  `RepairCost` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestinfo` (  `IndexID` int(11) NOT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `Size` smallint(11) DEFAULT NULL,  `Name` varchar(50) NOT NULL DEFAULT '0',  `MapIndex` int(11) NOT NULL DEFAULT '0',  `PalaceIndex` int(11) NOT NULL DEFAULT '0',  `GuardIndex` int(11) NOT NULL DEFAULT '0',  `GateIndex` int(11) NOT NULL DEFAULT '0',  `WallIndex` int(11) NOT NULL DEFAULT '0',  `SiegeIndex` int(11) NOT NULL DEFAULT '0',  `WarLength` int(11) NOT NULL DEFAULT '0',  `StartHour` int(3) NOT NULL DEFAULT '0',  `Type` int(11) NOT NULL DEFAULT '0',  `Game` int(11) NOT NULL DEFAULT '0',  `Monday` bit(1) NOT NULL DEFAULT b'0',  `Tuesday` bit(1) NOT NULL DEFAULT b'0',  `Wednesday` bit(1) NOT NULL DEFAULT b'0',  `Thursday` bit(1) NOT NULL DEFAULT b'0',  `Friday` bit(1) NOT NULL DEFAULT b'0',  `Saturday` bit(1) NOT NULL DEFAULT b'0',  `Sunday` bit(1) NOT NULL DEFAULT b'0',  `KingLocation_X` varchar(50) NOT NULL DEFAULT '0',  `KingLocation_Y` varchar(50) NOT NULL DEFAULT '0',  `KingSize` bigint(20) DEFAULT '0',  `FullMap` int(1) DEFAULT '0',  `FlagIndex` int(3) DEFAULT '0',  `ControlPointIndex` int(3) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestsiegeinfo` (  `IndexID` int(20) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `MobIndex` int(20) DEFAULT NULL,  `Name` varchar(50) NOT NULL DEFAULT '0',  `RepairCost` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `conquestwallinfo` (  `IndexID` int(20) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `MobIndex` int(20) DEFAULT NULL,  `Name` varchar(50) NOT NULL DEFAULT '0',  `RepairCost` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `dragoninfo` (  `IndexID` int(11) NOT NULL AUTO_INCREMENT,  `Enabled` tinyint(1) NOT NULL,  `MapFileName` varchar(200) DEFAULT NULL,  `MonsterName` varchar(200) DEFAULT NULL,  `BodyName` varchar(200) DEFAULT NULL,  `Location_X` varchar(200) DEFAULT NULL,  `Location_Y` varchar(200) DEFAULT NULL,  `DropAreaTop_X` varchar(200) DEFAULT NULL,  `DropAreaTop_Y` varchar(200) DEFAULT NULL,  `DropAreaBottom_X` varchar(200) DEFAULT NULL,  `DropAreaBottom_Y` varchar(200) DEFAULT NULL,  `Exps_0` bigint(20) DEFAULT NULL,  `Exps_1` bigint(20) DEFAULT NULL,  `Exps_2` bigint(20) DEFAULT NULL,  `Exps_3` bigint(20) DEFAULT NULL,  `Exps_4` bigint(20) DEFAULT NULL,  `Exps_5` bigint(20) DEFAULT NULL,  `Exps_6` bigint(20) DEFAULT NULL,  `Exps_7` bigint(20) DEFAULT NULL,  `Exps_8` bigint(20) DEFAULT NULL,  `Exps_9` bigint(20) DEFAULT NULL,  `Exps_10` bigint(20) DEFAULT NULL,  `Exps_11` bigint(20) DEFAULT NULL,  PRIMARY KEY (`IndexID`)) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `gameshopitem` (  `ItemIndex` int(11) NOT NULL DEFAULT '0',  `GIndex` int(11) DEFAULT NULL,  `GoldPrice` int(11) DEFAULT NULL,  `CreditPrice` int(11) DEFAULT NULL,  `Count` int(11) DEFAULT NULL,  `Stock` int(11) DEFAULT NULL,  `Class` varchar(200) DEFAULT NULL,  `Category` varchar(200) DEFAULT NULL,  `iStock` tinyint(1) DEFAULT NULL,  `Deal` tinyint(1) DEFAULT NULL,  `TopItem` tinyint(1) DEFAULT NULL,  `Date` datetime DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `iteminfo` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `Name` varchar(1000) DEFAULT '',  `Accuracy` int(3) DEFAULT '0',  `Agility` int(3) DEFAULT '0',  `AttackSpeed` int(3) DEFAULT '0',  `Durability` int(11) DEFAULT '0',  `BagWeight` int(3) DEFAULT '0',  `CanAwakening` int(1) DEFAULT '0',  `CanFastRun` int(1) DEFAULT '0',  `CanMine` int(1) DEFAULT '0',  `ClassBased` int(1) DEFAULT '0',  `ShowGroupPickup` int(1) DEFAULT '0',  `CriticalDamage` int(3) DEFAULT '0',  `CriticalRate` int(3) DEFAULT '0',  `Effect` int(3) DEFAULT '0',  `Freezing` int(3) DEFAULT '0',  `SpellRecovery` int(3) DEFAULT '0',  `HandWeight` int(3) DEFAULT '0',  `HealthRecovery` int(3) DEFAULT '0',  `Holy` int(3) DEFAULT '0',  `HpDrainRate` int(3) DEFAULT '0',  `HPrate` int(3) DEFAULT '0',  `Light` int(3) DEFAULT '0',  `Luck` int(3) DEFAULT '0',  `LevelBased` int(1) DEFAULT '0',  `NeedIdentify` int(1) DEFAULT '0',  `StartItem` int(1) DEFAULT '0',  `MagicResist` int(3) DEFAULT '0',  `MaxAC` int(3) DEFAULT '0',  `MaxAcRate` int(3) DEFAULT '0',  `MaxDC` int(3) DEFAULT '0',  `MaxMAC` int(3) DEFAULT '0',  `MaxMacRate` int(3) DEFAULT '0',  `MaxMC` int(3) DEFAULT '0',  `MaxSC` int(3) DEFAULT '0',  `MinAC` int(3) DEFAULT '0',  `MinDC` int(3) DEFAULT '0',  `MinMAC` int(3) DEFAULT '0',  `MinMC` int(3) DEFAULT '0',  `MinSC` int(3) DEFAULT '0',  `MPrate` int(3) DEFAULT '0',  `PoisonAttack` int(3) DEFAULT '0',  `PoisonRecovery` int(3) DEFAULT '0',  `PoisonResist` int(3) DEFAULT '0',  `Reflect` int(3) DEFAULT '0',  `Strong` int(3) DEFAULT '0',  `RandomStatsId` int(3) DEFAULT '0',  `RequiredAmount` int(3) DEFAULT '0',  `WearWeight` int(3) DEFAULT '0',  `Weight` int(3) DEFAULT '0',  `Price` int(10) DEFAULT '0',  `StackSize` int(10) DEFAULT '0',  `Grade` smallint(10) DEFAULT '0',  `Bind` smallint(10) DEFAULT '0',  `RequiredClass` int(10) DEFAULT '0',  `Type` int(10) DEFAULT '0',  `Unique_` int(10) DEFAULT '0',  `ToolTip` varchar(1000) DEFAULT '',  `RequiredGender` int(10) DEFAULT '0',  `RequiredType` int(10) DEFAULT '0',  `Set_` int(10) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `Image` smallint(11) DEFAULT '0',  `Shape` smallint(11) DEFAULT '0',  `InGame` int(11) DEFAULT '0',  PRIMARY KEY (`IndexID`)) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `magicinfo` (  `Name` varchar(50) DEFAULT NULL,  `Spell` smallint(6) DEFAULT NULL,  `BaseCost` int(3) DEFAULT NULL,  `LevelCost` int(3) DEFAULT NULL,  `Icon` int(3) DEFAULT NULL,  `Level1` int(3) DEFAULT NULL,  `Level2` int(3) DEFAULT NULL,  `Level3` int(3) DEFAULT NULL,  `Range_` int(3) DEFAULT NULL,  `Need1` smallint(6) DEFAULT NULL,  `Need2` smallint(6) DEFAULT NULL,  `Need3` smallint(6) DEFAULT NULL,  `PowerBase` smallint(6) DEFAULT NULL,  `PowerBonus` smallint(6) DEFAULT NULL,  `MPowerBase` smallint(6) DEFAULT NULL,  `MPowerBonus` smallint(6) DEFAULT NULL,  `DelayBase` int(11) DEFAULT NULL,  `DelayReduction` int(11) DEFAULT NULL,  `MultiplierBase` float DEFAULT NULL,  `MultiplierBonus` float DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `mapinfo` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `FileName` varchar(50) NOT NULL DEFAULT '0',  `Title` varchar(50) NOT NULL DEFAULT '0',  `NoReconnectMap` varchar(50) NOT NULL DEFAULT '0',  `MiniMap` smallint(6) NOT NULL DEFAULT '0',  `BigMap` smallint(6) NOT NULL DEFAULT '0',  `Music` smallint(6) NOT NULL DEFAULT '0',  `Light` int(3) NOT NULL DEFAULT '0',  `MapDarkLight` int(3) NOT NULL DEFAULT '0',  `FireDamage` int(3) NOT NULL DEFAULT '0',  `LightningDamage` int(3) NOT NULL DEFAULT '0',  `MineIndex` int(3) NOT NULL DEFAULT '0',  `NoTeleport` bit(1) NOT NULL DEFAULT b'0',  `NoReconnect` bit(1) NOT NULL DEFAULT b'0',  `NoRandom` bit(1) NOT NULL DEFAULT b'0',  `NoEscape` bit(1) NOT NULL DEFAULT b'0',  `NoRecall` bit(1) NOT NULL DEFAULT b'0',  `NoDrug` bit(1) NOT NULL DEFAULT b'0',  `NoPosition` bit(1) NOT NULL DEFAULT b'0',  `NoFight` bit(1) NOT NULL DEFAULT b'0',  `NoThrowItem` bit(1) NOT NULL DEFAULT b'0',  `NoDropPlayer` bit(1) NOT NULL DEFAULT b'0',  `NoDropMonster` bit(1) NOT NULL DEFAULT b'0',  `NoNames` bit(1) NOT NULL DEFAULT b'0',  `NoMount` bit(1) NOT NULL DEFAULT b'0',  `NeedBridle` bit(1) NOT NULL DEFAULT b'0',  `Fight` bit(1) NOT NULL DEFAULT b'0',  `NeedHole` bit(1) NOT NULL DEFAULT b'0',  `Fire` bit(1) NOT NULL DEFAULT b'0',  `Lightning` bit(1) NOT NULL DEFAULT b'0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `minezone` (  `MapMineIndex` int(11) NOT NULL DEFAULT '0',  `Mine` int(3) NOT NULL DEFAULT '0',  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `Size` smallint(11) NOT NULL DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `monsterinfo` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `Name` varchar(200) DEFAULT NULL,  `AI` int(4) DEFAULT NULL,  `AttackSpeed` smallint(6) DEFAULT NULL,  `Accuracy` tinyint(4) DEFAULT NULL,  `AutoRev_` tinyint(1) DEFAULT NULL,  `CanPush` tinyint(1) DEFAULT NULL,  `CanTame` tinyint(1) DEFAULT NULL,  `CoolEye_` tinyint(4) DEFAULT NULL,  `Effect` tinyint(4) DEFAULT NULL,  `Experience` int(11) DEFAULT NULL,  `HP` int(11) DEFAULT NULL,  `Image` smallint(6) DEFAULT NULL,  `Level` smallint(6) DEFAULT NULL,  `Light` tinyint(4) DEFAULT NULL,  `MaxAC` smallint(6) DEFAULT NULL,  `MaxDC` smallint(6) DEFAULT NULL,  `MaxMAC` smallint(6) DEFAULT NULL,  `MaxMC` smallint(6) DEFAULT NULL,  `MaxSC` smallint(6) DEFAULT NULL,  `MinAC` smallint(6) DEFAULT NULL,  `MinDC` smallint(6) DEFAULT NULL,  `MinMAC` smallint(6) DEFAULT NULL,  `MinMC` smallint(6) DEFAULT NULL,  `MinSC` smallint(6) DEFAULT NULL,  `MoveSpeed` smallint(6) DEFAULT NULL,  `Undead_` tinyint(1) DEFAULT NULL,  `ViewRange` tinyint(4) DEFAULT NULL,  `Agility` tinyint(4) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `movements` (  `IndexIDTied` int(11) NOT NULL DEFAULT '0',  `MapIndex` int(11) NOT NULL DEFAULT '0',  `Source_X` varchar(50) NOT NULL DEFAULT '0',  `Source_Y` varchar(50) NOT NULL DEFAULT '0',  `Destination_X` varchar(50) NOT NULL DEFAULT '0',  `Destination_Y` varchar(50) NOT NULL DEFAULT '0',  `ConquestIndex` varchar(50) NOT NULL DEFAULT '0',  `NeedHole` bit(1) NOT NULL DEFAULT b'0',  `NeedMove` bit(1) NOT NULL DEFAULT b'0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `npcinfo` (  `IndexID` int(11) DEFAULT NULL,  `MapIndex` int(11) DEFAULT NULL,  `Name` varchar(200) DEFAULT NULL,  `FileName` varchar(200) DEFAULT NULL,  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `Rate` smallint(6) DEFAULT '0',  `Image` tinyint(4) DEFAULT '0',  `HourStart` tinyint(4) DEFAULT '0',  `MinuteStart` tinyint(4) DEFAULT '0',  `HourEnd` tinyint(4) DEFAULT '0',  `MinuteEnd` tinyint(4) DEFAULT '0',  `TimeVisible` int(1) DEFAULT '0',  `IsDefault` int(1) DEFAULT '0',  `MinLev` smallint(6) DEFAULT '0',  `MaxLev` smallint(6) DEFAULT '0',  `DayofWeek` varchar(200) DEFAULT NULL,  `ClassRequired` varchar(200) DEFAULT NULL,  `Conquest` int(11) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `questinfo` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `Name` varchar(1000) NOT NULL DEFAULT '0',  `Group_` varchar(1000) NOT NULL DEFAULT '0',  `FileName` varchar(1000) NOT NULL DEFAULT '0',  `GotoMessage` varchar(1000) NOT NULL DEFAULT '0',  `KillMessage` varchar(1000) NOT NULL DEFAULT '0',  `ItemMessage` varchar(1000) NOT NULL DEFAULT '0',  `FlagMessage` varchar(1000) NOT NULL DEFAULT '0',  `RequiredMinLevel` int(4) NOT NULL DEFAULT '0',  `RequiredMaxLevel` int(4) NOT NULL DEFAULT '0',  `RequiredQuest` int(4) NOT NULL DEFAULT '0',  `RequiredClass` tinyint(4) DEFAULT NULL,  `Type` tinyint(4) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `respawninfo` (  `MapRespawnIndex` int(11) NOT NULL DEFAULT '0',  `RespawnIndex` int(11) NOT NULL DEFAULT '0',  `MonsterIndex` int(11) NOT NULL DEFAULT '0',  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0',  `RoutePath` varchar(50) NOT NULL DEFAULT '0',  `Direction` bit(2) NOT NULL DEFAULT b'0',  `SaveRespawnTime` int(1) NOT NULL DEFAULT '0',  `Count` smallint(11) NOT NULL DEFAULT '0',  `Spread` smallint(11) NOT NULL DEFAULT '0',  `Delay` smallint(11) NOT NULL DEFAULT '0',  `RandomDelay` smallint(11) NOT NULL DEFAULT '0',  `RespawnTicks` smallint(11) NOT NULL DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `respawntickoption` (  `UserCount` int(20) DEFAULT NULL,  `DelayLoss` double DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `respawntimer` (  `BaseSpawnRate` int(4) DEFAULT NULL,  `CurrentTickcounter` bigint(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `safezoneinfo` (  `SafeMapIndex` int(11) NOT NULL DEFAULT '0',  `Size` smallint(11) NOT NULL DEFAULT '0',  `StartPoint` bit(1) NOT NULL DEFAULT b'0',  `Location_X` varchar(50) NOT NULL DEFAULT '0',  `Location_Y` varchar(50) NOT NULL DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `servercount` (  `IndexID` int(20) DEFAULT '1',  `Version` int(20) DEFAULT '0',  `CustomVersion` int(20) DEFAULT '0',  `MonsterIndex` int(20) DEFAULT '0',  `NPCIndex` int(20) DEFAULT '0',  `QuestIndex` int(20) DEFAULT '0',  `ItemIndex` int(20) DEFAULT '0',  `MapIndex` int(20) DEFAULT '0',  `ConquestIndex` int(20) DEFAULT '0',  `GameshopIndex` int(20) DEFAULT '0',  `RespawnIndex` int(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8; CREATE TABLE IF NOT EXISTS `conquestpoint` ( `IndexID` int(20) DEFAULT NULL, `Location_X` varchar(50) NOT NULL DEFAULT '0', `Location_Y` varchar(50) NOT NULL DEFAULT '0',`Name` varchar(50) NOT NULL DEFAULT '0', `FileName` varchar(50) NOT NULL DEFAULT '0') ENGINE = InnoDB DEFAULT CHARSET = utf8;";
+
+                MySqlCommand con = new MySqlCommand(create, connection);
+                con.ExecuteNonQuery();
+                con.Dispose();
+
+                string sqlCommand = "INSERT INTO  " + Settings.DBServer + ".servercount ( Version, CustomVersion, MapIndex, ItemIndex, MonsterIndex, NPCIndex, QuestIndex, GameshopIndex, ConquestIndex, RespawnIndex) VALUES (@Version, @CustomVersion, @MapIndex, @ItemIndex, @MonsterIndex, @NPCIndex, @QuestIndex, @GameshopIndex, @ConquestIndex, @RespawnIndex)";
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@Version", Version);
+                    command.Parameters.AddWithValue("@CustomVersion", CustomVersion);
+                    command.Parameters.AddWithValue("@MapIndex", MapIndex);
+                    command.Parameters.AddWithValue("@ItemIndex", ItemIndex);
+                    command.Parameters.AddWithValue("@MonsterIndex", MonsterIndex);
+                    command.Parameters.AddWithValue("@NPCIndex", NPCIndex);
+                    command.Parameters.AddWithValue("@QuestIndex", QuestIndex);
+                    command.Parameters.AddWithValue("@GameshopIndex", GameshopIndex);
+                    command.Parameters.AddWithValue("@ConquestIndex", ConquestIndex);
+                    command.Parameters.AddWithValue("@RespawnIndex", RespawnIndex);
+
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            for (int i = 0; i < ItemInfoList.Count; i++)
+                SaveItemDB(ItemInfoList[i]);
+            for (int i = 0; i < MonsterInfoList.Count; i++)
+                MonsterInfo.SaveMonsterDB(MonsterInfoList[i]);
+            for (int i = 0; i < NPCInfoList.Count; i++)
+                NPCInfo.SaveNPCInfoDB(NPCInfoList[i]);
+            for (int i = 0; i < QuestInfoList.Count; i++)
+                QuestInfo.SaveQuestDB(QuestInfoList[i]);
+            SaveDragonDB();
+            SaveConquestInfo();
+            for (int i = 0; i < MagicInfoList.Count; i++)
+                MagicInfo.SaveMagicInfoDB(MagicInfoList[i]);
+            for (int i = 0; i < GameShopList.Count; i++)
+                SaveRespawnTimer();
+            for (int i = 0; i < MapInfoList.Count; i++)
+                MapInfo.SaveMapInfoDB(MapInfoList[i]);
+            SMain.Enqueue(string.Format("saved data"));
+
+
+            }
+       
+        public void AccountSaveDB()
+            {
+  
+            try
+                {
+
+                MySqlConnection connectiongeneralcount = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connectiongeneralcount.ConnectionString = connectionString;
+                connectiongeneralcount.Open();
+
+                string create = "CREATE DATABASE IF NOT EXISTS `" + Settings.DBAccount + "` ;USE `" + Settings.DBAccount + "`;CREATE TABLE IF NOT EXISTS `account` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `AccountID` varchar(20) DEFAULT '',  `Password` varchar(20) DEFAULT '',  `UserName` varchar(20) DEFAULT '',  `BirthDate` datetime DEFAULT '0000-00-00 00:00:00',  `SecretQuestion` varchar(20) DEFAULT '',  `SecretAnswer` varchar(20) DEFAULT '',  `EMailAddress` varchar(20) DEFAULT '',  `CreationIP` varchar(20) DEFAULT '',  `CreationDate` datetime DEFAULT '0000-00-00 00:00:00',  `Banned` tinyint(1) DEFAULT '0',  `BanReason` varchar(60) DEFAULT '',  `ExpiryDate` datetime DEFAULT '0000-00-00 00:00:00',  `WrongPasswordCount` int(11) DEFAULT '0',  `AccountResize` int(11) DEFAULT '80',  `LastIP` varchar(20) DEFAULT '0',  `LastDate` datetime DEFAULT '0000-00-00 00:00:00',  `Gold` varchar(20) DEFAULT '0',  `Credit` varchar(20) DEFAULT '0',  `AdminAccount` tinyint(1) DEFAULT '0',  KEY `AccountID` (`AccountID`),  KEY `IndexID` (`IndexID`)) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `auctions` (  `AuctionID` bigint(11) NOT NULL DEFAULT '0',  `NameSeller` varchar(50) NOT NULL DEFAULT '',  `ConsignmentDate` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  `Price` int(11) NOT NULL DEFAULT '0',  `CharacterIndex` int(11) DEFAULT '0',  `Expired` int(1) DEFAULT '0',  `Sold` tinyint(1) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `auctionsitems` (  `UniqueID` bigint(20) NOT NULL DEFAULT '0',  `ChName` varchar(1000) DEFAULT '',  `Store` varchar(1000) DEFAULT 'Auctions',  `Position` int(11) DEFAULT '0',  `ItemName` varchar(1000) DEFAULT '0',  `ItemIndex` int(11) DEFAULT '0',  `AuctionID` bigint(20) DEFAULT '0',  `Attached` bigint(20) DEFAULT '0',  `IsAttached` int(1) DEFAULT '0',  `IsAwake` int(1) DEFAULT '0',  `Awake` int(1) DEFAULT '0',  `AwakeType` int(3) DEFAULT '0',  `CurrentDura` smallint(11) DEFAULT '0',  `MaxDura` smallint(11) DEFAULT '0',  `Count` smallint(11) DEFAULT '0',  `MC` int(3) DEFAULT '0',  `SC` int(3) DEFAULT '0',  `AC` int(3) DEFAULT '0',  `DC` int(3) DEFAULT '0',  `MAC` int(3) DEFAULT '0',  `Accuracy` int(3) DEFAULT '0',  `Agility` int(3) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `AttackSpeed` int(3) DEFAULT '0',  `Luck` int(3) DEFAULT '0',  `SoulBoundId` int(11) DEFAULT '0',  `Identified` int(3) DEFAULT '0',  `Cursed` int(3) DEFAULT '0',  `Strong` int(3) DEFAULT '0',  `MagicResist` int(3) DEFAULT '0',  `PoisonResist` int(3) DEFAULT '0',  `HealthRecovery` int(3) DEFAULT '0',  `ManaRecovery` int(3) DEFAULT '0',  `PoisonRecovery` int(3) DEFAULT '0',  `CriticalRate` int(3) DEFAULT '0',  `CriticalDamage` int(3) DEFAULT '0',  `Freezing` int(3) DEFAULT '0',  `PoisonAttack` int(3) DEFAULT '0',  `Slots` int(3) DEFAULT '0',  `GemCount` int(11) DEFAULT '0',  `RefinedValue` int(3) DEFAULT '0',  `RefineAdded` int(3) DEFAULT '0',  `WeddingRing` int(1) DEFAULT '0',  `ExpireInfo` datetime DEFAULT '0001-01-01 00:00:00') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `awake` (  `UniqueID` int(11) NOT NULL DEFAULT '0',  `Value` int(11) DEFAULT '0',  `Position` int(11) NOT NULL DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `buff` (  `ChName` varchar(1000) DEFAULT '',  `Type` int(11) NOT NULL DEFAULT '0',  `Visible` int(1) DEFAULT '0',  `ObjectID` int(11) DEFAULT '0',  `Infinite` int(1) DEFAULT '0',  `ExpireTime` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `buff_value` (  `ChName` varchar(1000) DEFAULT NULL,  `Value` int(20) DEFAULT NULL,  `Position` int(11) DEFAULT NULL,  `Type` int(11) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `characterinfo` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `AccountIndex` int(11) NOT NULL DEFAULT '0',  `AccountID` varchar(1000) DEFAULT '',  `Name` varchar(1000) DEFAULT '',  `Level` smallint(11) DEFAULT '0',  `Class` int(11) DEFAULT '0',  `Gender` int(11) DEFAULT '0',  `Hair` int(11) NOT NULL DEFAULT '0',  `CreationIP` varchar(1000) DEFAULT '',  `CreationDate` datetime DEFAULT '0000-00-00 00:00:00',  `Banned` int(1) DEFAULT '0',  `BanReason` varchar(1000) DEFAULT '',  `ExpiryDate` datetime DEFAULT '0000-00-00 00:00:00',  `LastIP` varchar(1000) DEFAULT '',  `LastDate` datetime DEFAULT '0000-00-00 00:00:00',  `Deleted` int(1) DEFAULT '0',  `DeleteDate` datetime DEFAULT '0000-00-00 00:00:00',  `CurrentMapIndex` smallint(11) DEFAULT '0',  `CurrentLocation_X` varchar(200) DEFAULT '0',  `CurrentLocation_Y` varchar(200) DEFAULT '0',  `Direction` int(3) DEFAULT '4',  `BindMapIndex` smallint(11) DEFAULT '0',  `BindLocation_X` varchar(200) DEFAULT '0',  `BindLocation_Y` varchar(200) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `Experience` bigint(20) DEFAULT '0',  `AMode` int(1) DEFAULT '0',  `PMode` int(1) DEFAULT '0',  `PKPoints` int(11) DEFAULT '0',  `Thrusting` int(1) DEFAULT '0',  `HalfMoon` int(1) DEFAULT '0',  `CrossHalfMoon` int(1) DEFAULT '0',  `DoubleSlash` int(1) DEFAULT '0',  `MentalState` bit(2) NOT NULL DEFAULT b'0',  `AllowGroup` int(1) DEFAULT '0',  `GuildIndex` int(11) DEFAULT '-1',  `AllowTrade` int(1) DEFAULT '0',  `Married` int(3) DEFAULT '0',  `MarriedName` varchar(50) DEFAULT '',  `MarriedDate` datetime DEFAULT '0000-00-00 00:00:00',  `Mentor` int(3) DEFAULT '0',  `MentorDate` datetime DEFAULT '0000-00-00 00:00:00',  `isMentor` int(1) DEFAULT '0',  `MentorExp` bigint(20) DEFAULT '0',  `MentorName` varchar(50) DEFAULT '',  `PearlCount` int(11) DEFAULT '0',  `InventoryResize` int(11) DEFAULT '46',  `CollectTime` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `completedquests` (  `ChName` varchar(1000) DEFAULT '',  `Quest` varchar(1000) DEFAULT '',  `Type` varchar(1000) DEFAULT '',  `CompletedQuests` int(11) NOT NULL DEFAULT '0',  `Finish` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `currentquests` (  `ChName` varchar(1000) DEFAULT '',  `Quest` varchar(1000) DEFAULT '',  `Type` varchar(1000) DEFAULT '',  `IndexID` int(11) DEFAULT '0',  `KillTask` int(1) DEFAULT '0',  `ItemTask` int(1) DEFAULT '0',  `FlagTask` int(1) DEFAULT '0',  `StartDateTime` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  `EndDateTime` datetime DEFAULT '9999-01-01 00:00:00') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `flags` (  `ChName` varchar(1000) DEFAULT NULL,  `Flags` int(1) DEFAULT NULL,  `Number` int(11) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `flagtaskset` (  `ChName` varchar(1000) DEFAULT '',  `IndexID` int(11) DEFAULT '0',  `Position` bigint(20) DEFAULT '0',  `Value` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `friends` (  `IndexID` int(11) NOT NULL DEFAULT '0',  `ChName` varchar(1000) DEFAULT '',  `Name` varchar(1000) DEFAULT '',  `Blocked` int(1) DEFAULT '0',  `Memo` varchar(1000) DEFAULT '') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `gameshoplog` (  `Value` int(20) DEFAULT NULL,  `Key_` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `generalcount` (  `IndexID` int(20) DEFAULT '1',  `Version` int(20) DEFAULT '0',  `CustomVersion` int(20) DEFAULT '0',  `NextAccountID` int(20) DEFAULT '0',  `NextCharacterID` int(20) DEFAULT '0',  `NextUserItemID` bigint(20) DEFAULT '0',  `GuildList` int(20) DEFAULT '0',  `NextGuildID` int(20) DEFAULT '0',  `NextAuctionID` bigint(20) DEFAULT '0',  `NextMailID` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `gspurchases` (  `ChName` varchar(1000) DEFAULT NULL,  `Value` int(20) DEFAULT NULL,  `Key_` int(20) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `intelligentcreatures` (  `ChName` varchar(1000) DEFAULT '',  `PetType` int(11) DEFAULT '0',  `CustomName` varchar(1000) DEFAULT '',  `PetTypeName` varchar(1000) DEFAULT '',  `Fullness` smallint(11) DEFAULT '0',  `SlotIndex` smallint(11) DEFAULT '0',  `ExpireTime` bigint(20) DEFAULT '0',  `BlackstoneTime` bigint(20) DEFAULT '0',  `MaintainFoodTime` bigint(20) DEFAULT '0',  `PetMode` tinyint(1) DEFAULT '0',  `PickupGrade` int(11) DEFAULT '0',  `PetPickupAll` int(1) DEFAULT '1',  `PetPickupGold` int(1) DEFAULT '0',  `PetPickupWeapons` int(1) DEFAULT '0',  `PetPickupArmours` int(1) DEFAULT '0',  `PetPickupHelmets` int(1) DEFAULT '0',  `PetPickupBoots` int(1) DEFAULT '0',  `PetPickupBelts` int(1) DEFAULT '0',  `PetPickupAccessories` int(1) DEFAULT '0',  `PetPickupOthers` int(1) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `inventory` (  `UniqueID` bigint(20) NOT NULL DEFAULT '0',  `ChName` varchar(1000) DEFAULT '',  `ItemIndex` int(11) DEFAULT '0',  `Store` varchar(50) DEFAULT '',  `ItemName` varchar(50) DEFAULT '',  `Attached` bigint(20) DEFAULT '0',  `IsAttached` int(1) DEFAULT '0',  `IsAwake` int(1) DEFAULT '0',  `AwakeType` int(1) DEFAULT '0',  `Awake` int(1) DEFAULT '0',  `Position` int(11) DEFAULT '0',  `CurrentDura` smallint(11) DEFAULT '0',  `MaxDura` smallint(11) DEFAULT '0',  `Count` smallint(11) DEFAULT '0',  `MC` int(3) DEFAULT '0',  `SC` int(3) DEFAULT '0',  `AC` int(3) DEFAULT '0',  `DC` int(3) DEFAULT '0',  `MAC` int(3) DEFAULT '0',  `Accuracy` int(3) DEFAULT '0',  `Agility` int(3) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `AttackSpeed` int(3) DEFAULT '0',  `Luck` int(3) DEFAULT '0',  `SoulBoundId` int(11) DEFAULT '0',  `Identified` int(3) DEFAULT '0',  `Cursed` int(3) DEFAULT '0',  `Strong` int(3) DEFAULT '0',  `MagicResist` int(3) DEFAULT '0',  `PoisonResist` int(3) DEFAULT '0',  `HealthRecovery` int(3) DEFAULT '0',  `ManaRecovery` int(3) DEFAULT '0',  `PoisonRecovery` int(3) DEFAULT '0',  `CriticalRate` int(3) DEFAULT '0',  `CriticalDamage` int(3) DEFAULT '0',  `Freezing` int(3) DEFAULT '0',  `PoisonAttack` int(3) DEFAULT '0',  `Slots` int(3) DEFAULT '0',  `GemCount` int(11) DEFAULT '0',  `RefinedValue` int(3) DEFAULT '0',  `RefineAdded` int(3) DEFAULT '0',  `WeddingRing` int(1) DEFAULT '-1',  `ExpireInfo` datetime DEFAULT '0000-00-00 00:00:00') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `itemtaskcount` (  `ChName` varchar(1000) DEFAULT NULL,  `IndexID` int(11) DEFAULT '0',  `Position` bigint(20) DEFAULT '0',  `Value` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `killtaskcount` (  `ChName` varchar(1000) DEFAULT '',  `IndexID` int(11) DEFAULT '0',  `Position` int(11) DEFAULT '0',  `Value` int(11) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `magics` (  `ChName` varchar(1000) DEFAULT '',  `Spell` smallint(6) DEFAULT '0',  `Level` bigint(20) DEFAULT '0',  `Key_` bigint(20) DEFAULT '0',  `Experience` smallint(11) DEFAULT '0',  `IsTempSpell` bit(1) DEFAULT b'0',  `CastTime` bigint(20) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `mail` (  `MailID` bigint(20) DEFAULT '0',  `Sender` varchar(2000) DEFAULT '',  `RecipientIndex` int(20) DEFAULT '0',  `Message` varchar(1000) DEFAULT '',  `Gold` bigint(20) DEFAULT '0',  `DateSent` datetime DEFAULT CURRENT_TIMESTAMP,  `DateOpened` datetime DEFAULT CURRENT_TIMESTAMP,  `Locked` tinyint(1) DEFAULT '0',  `Collected` tinyint(1) DEFAULT '0',  `CanReply` tinyint(1) DEFAULT '0',  `ItemCount` tinyint(3) DEFAULT '0') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `mailitems` (  `UniqueID` bigint(20) NOT NULL DEFAULT '0',  `ChName` varchar(1000) DEFAULT '',  `Store` varchar(1000) DEFAULT 'Auctions',  `Position` int(11) DEFAULT '0',  `ItemName` varchar(1000) DEFAULT '0',  `ItemIndex` int(11) DEFAULT '0',  `MailID` bigint(20) DEFAULT '0',  `Attached` bigint(20) DEFAULT '0',  `IsAttached` int(1) DEFAULT '0',  `IsAwake` int(1) DEFAULT '0',  `Awake` int(1) DEFAULT '0',  `AwakeType` int(3) DEFAULT '0',  `CurrentDura` smallint(11) DEFAULT '0',  `MaxDura` smallint(11) DEFAULT '0',  `Count` smallint(11) DEFAULT '0',  `MC` int(3) DEFAULT '0',  `SC` int(3) DEFAULT '0',  `AC` int(3) DEFAULT '0',  `DC` int(3) DEFAULT '0',  `MAC` int(3) DEFAULT '0',  `Accuracy` int(3) DEFAULT '0',  `Agility` int(3) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `AttackSpeed` int(3) DEFAULT '0',  `Luck` int(3) DEFAULT '0',  `SoulBoundId` int(11) DEFAULT '0',  `Identified` int(3) DEFAULT '0',  `Cursed` int(3) DEFAULT '0',  `Strong` int(3) DEFAULT '0',  `MagicResist` int(3) DEFAULT '0',  `PoisonResist` int(3) DEFAULT '0',  `HealthRecovery` int(3) DEFAULT '0',  `ManaRecovery` int(3) DEFAULT '0',  `PoisonRecovery` int(3) DEFAULT '0',  `CriticalRate` int(3) DEFAULT '0',  `CriticalDamage` int(3) DEFAULT '0',  `Freezing` int(3) DEFAULT '0',  `PoisonAttack` int(3) DEFAULT '0',  `Slots` int(3) DEFAULT '0',  `GemCount` int(11) DEFAULT '0',  `RefinedValue` int(3) DEFAULT '0',  `RefineAdded` int(3) DEFAULT '0',  `WeddingRing` int(1) DEFAULT '0',  `ExpireInfo` datetime DEFAULT '0001-01-01 00:00:00') ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `pets` (  `ChName` varchar(1000) DEFAULT NULL,  `MonsterIndex` int(11) DEFAULT NULL,  `Level` bigint(20) DEFAULT NULL,  `MaxPetLevel` bigint(20) DEFAULT NULL,  `Experience` smallint(11) DEFAULT NULL,  `HP` smallint(11) DEFAULT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;CREATE TABLE IF NOT EXISTS `storage` (  `UniqueID` bigint(20) NOT NULL DEFAULT '0',  `AccountID` varchar(1000) DEFAULT '',  `ItemIndex` int(11) DEFAULT '0',  `Store` varchar(50) DEFAULT '',  `ItemName` varchar(50) DEFAULT '',  `Attached` bigint(20) DEFAULT '0',  `IsAttached` int(1) DEFAULT '0',  `IsAwake` int(1) DEFAULT '0',  `AwakeType` int(3) DEFAULT '0',  `Awake` int(1) DEFAULT '0',  `Position` int(11) DEFAULT '0',  `CurrentDura` smallint(11) DEFAULT '0',  `MaxDura` smallint(11) DEFAULT '0',  `Count` smallint(11) DEFAULT '0',  `MC` int(3) DEFAULT '0',  `SC` int(3) DEFAULT '0',  `AC` int(3) DEFAULT '0',  `DC` int(3) DEFAULT '0',  `MAC` int(3) DEFAULT '0',  `Accuracy` int(3) DEFAULT '0',  `Agility` int(3) DEFAULT '0',  `HP` smallint(11) DEFAULT '0',  `MP` smallint(11) DEFAULT '0',  `AttackSpeed` int(3) DEFAULT '0',  `Luck` int(3) DEFAULT '0',  `SoulBoundId` int(11) DEFAULT '0',  `Identified` int(3) DEFAULT '0',  `Cursed` int(3) DEFAULT '0',  `Strong` int(3) DEFAULT '0',  `MagicResist` int(3) DEFAULT '0',  `PoisonResist` int(3) DEFAULT '0',  `HealthRecovery` int(3) DEFAULT '0',  `ManaRecovery` int(3) DEFAULT '0',  `PoisonRecovery` int(3) DEFAULT '0',  `CriticalRate` int(3) DEFAULT '0',  `CriticalDamage` int(3) DEFAULT '0',  `Freezing` int(3) DEFAULT '0',  `PoisonAttack` int(3) DEFAULT '0',  `Slots` int(3) DEFAULT '0',  `GemCount` int(11) DEFAULT '0',  `RefinedValue` int(3) DEFAULT '0',  `RefineAdded` int(3) DEFAULT '0',  `WeddingRing` int(1) DEFAULT '0',  `ExpireInfo` datetime DEFAULT '0001-01-01 00:00:00') ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+
+
+
+                MySqlCommand con = new MySqlCommand(create, connectiongeneralcount);
+                con.ExecuteNonQuery();
+                con.Dispose();
+
+
+                string sqlgeneralcount;
+
+                string query_Storage = "SELECT COUNT(*) FROM  " + Settings.DBAccount + ".generalcount WHERE IndexID = '1'";
+
+                using (var cmd = new MySqlCommand(query_Storage, connectiongeneralcount))
+                    {
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (count == 0)
+                        {
+                        sqlgeneralcount = "INSERT INTO  " + Settings.DBAccount + ".generalcount (Version, CustomVersion, NextAccountID, NextCharacterID, GuildList, NextGuildID, NextAuctionID, NextMailID, NextUserItemID) VALUES (@Version, @CustomVersion, @NextAccountID, @NextCharacterID, @GuildList, @NextGuildID, @NextAuctionID, @NextMailID, @NextUserItemID)";
+                        }
+
+                    else
+                        {
+                        sqlgeneralcount = "UPDATE  " + Settings.DBAccount + ".generalcount SET Version = @Version, CustomVersion = @CustomVersion, NextAccountID = @NextAccountID, NextCharacterID = @NextCharacterID, GuildList = @GuildList, NextGuildID = @NextGuildID, NextAuctionID = @NextAuctionID, NextMailID = @NextMailID, NextUserItemID = @NextUserItemID Where IndexID = '1'";
+                        }
+
+
+                    using (var command = new MySqlCommand(sqlgeneralcount, connectiongeneralcount))
+                        {
+                        command.Parameters.AddWithValue("@Version", Version);
+                        command.Parameters.AddWithValue("@CustomVersion", CustomVersion);
+                        command.Parameters.AddWithValue("@NextAccountID", NextAccountID);
+                        command.Parameters.AddWithValue("@NextCharacterID", NextCharacterID);
+                        command.Parameters.AddWithValue("@NextUserItemID", NextUserItemID);
+                        command.Parameters.AddWithValue("@GuildList", GuildList);
+                        command.Parameters.AddWithValue("@NextGuildID", NextGuildID);
+                        command.Parameters.AddWithValue("@NextAuctionID", NextAuctionID);
+                        command.Parameters.AddWithValue("@NextMailID", NextMailID);
+
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+
+                    connectiongeneralcount.Close();
+                    }
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+
+            SaveAccountDB.SaveProgressDB(AccountList);
 
         }
 
+    #endregion
+
+    #region Function LoadDB
+    public void LoadDB_ItemInfo()
+            {
+            ItemInfoList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".iteminfo";
+
+                MySqlDataReader readerItemInfo = instruccion.ExecuteReader();
+
+                while (readerItemInfo.Read())
+                    {
+
+                    ItemInfo NewItem = new ItemInfo(readerItemInfo);
+
+                    if ((NewItem != null) && (NewItem.RandomStatsId < Settings.RandomItemStatsList.Count))
+                        {
+                        NewItem.RandomStats = Settings.RandomItemStatsList[NewItem.RandomStatsId];
+                        }
+
+                    ItemInfoList.Add(NewItem);
+
+                    }
+
+                readerItemInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        public void LoadDB_MonsterInfo()
+            {
+            MonsterInfoList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT* FROM " + Settings.DBServer + ".monsterinfo";
+                MySqlDataReader readerMonsterInfo = instruccion.ExecuteReader();
+
+                while (readerMonsterInfo.Read())
+                    {
+                    MonsterInfoList.Add(new MonsterInfo(readerMonsterInfo));
+                    }
+
+                readerMonsterInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        public void LoadDB_NPCInfo()
+            {
+            NPCInfoList.Clear();
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+
+                MySqlCommand instruccion_mov = connection.CreateCommand();
+                instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".npcinfo";
+
+                MySqlDataReader readerNPCInfo = instruccion_mov.ExecuteReader();
+
+                while (readerNPCInfo.Read())
+                    {
+                    NPCInfoList.Add(new NPCInfo(readerNPCInfo));
+                    }
+
+                readerNPCInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+
+            }
+        public void LoadDB_QuestInfo()
+            {
+            QuestInfoList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".questinfo";
+                MySqlDataReader readerQuestInfo = instruccion.ExecuteReader();
+
+                while (readerQuestInfo.Read())
+                    {
+                    QuestInfoList.Add(new QuestInfo(readerQuestInfo));
+                    }
+
+                readerQuestInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void LoadDB_GameShop()
+            {
+            GameShopList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".gameshopitem";
+                MySqlDataReader readerGameShopItem = instruccion.ExecuteReader();
+
+                while (readerGameShopItem.Read())
+                    {
+
+                    GameShopItem item = new GameShopItem(readerGameShopItem);
+                    if (SMain.Envir.BindGameShop(item))
+                        {
+                        GameShopList.Add(item);
+                        }
+                    }
+
+                readerGameShopItem.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+        public void LoadDB_MapInfo()
+            {
+
+            lock (LoadLock)
+                {
+                MapInfoList.Clear();
+                try
+                    {
+
+                    MySqlConnection connection = new MySqlConnection(); //star conection 
+                    String connectionString;
+                    connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                    connection.ConnectionString = connectionString;
+                    connection.Open();
+
+                    MySqlCommand instruccion = connection.CreateCommand();
+                    instruccion.CommandText = "SELECT IndexID, Title, FileName, NoReconnectMap, MiniMap, BigMap, Music, Light, MapDarkLight, FireDamage, LightningDamage, MineIndex, NoTeleport, NoReconnect, NoRandom, NoEscape, NoRecall, NoDrug, NoPosition, NoFight, NoThrowItem, NoDropPlayer, NoDropMonster, NoNames, NoMount, NeedBridle, Fight, NeedHole, Fire, Lightning FROM " + Settings.DBServer + ".mapinfo ";
+                    MySqlDataReader readerMapInfo = instruccion.ExecuteReader();
+
+
+                    while (readerMapInfo.Read())
+                        {
+                        MapInfoList.Add(new MapInfo(readerMapInfo));
+                        }
+                    readerMapInfo.Dispose();
+
+                    for (int i = 0; i < MapInfoList.Count; i++)
+                        {
+
+                        MySqlCommand instruccion_mov = connection.CreateCommand();
+                        instruccion_mov.CommandText = "SELECT IndexIDTied, MapIndex, Source_X, Source_Y, Destination_X, Destination_Y, ConquestIndex, NeedHole, NeedMove FROM " + Settings.DBServer + ".movements WHERE IndexIDTied =" + MapInfoList[i].Index;
+                        MySqlDataReader readerMovementsInfo = instruccion_mov.ExecuteReader();
+
+                        while (readerMovementsInfo.Read())
+                            {
+                            MapInfoList[i].Movements.Add(new MovementInfo(readerMovementsInfo));
+                            }
+
+                        readerMovementsInfo.Dispose();
+
+                        MySqlCommand instruccion_Resp = connection.CreateCommand();
+                        instruccion_Resp.CommandText = "SELECT MapRespawnIndex, RespawnIndex, MonsterIndex, Location_X, Location_Y, RoutePath, Direction, SaveRespawnTime, Count, Spread, Delay, RandomDelay, RespawnTicks FROM " + Settings.DBServer + ".respawninfo WHERE MapRespawnIndex =" + MapInfoList[i].Index;
+                        MySqlDataReader readerRespawnInfo = instruccion_Resp.ExecuteReader();
+
+                        while (readerRespawnInfo.Read())
+                            {
+                            MapInfoList[i].Respawns.Add(new RespawnInfo(readerRespawnInfo));
+                            }
+
+                        readerRespawnInfo.Dispose();
+
+                        MySqlCommand instruccion_Saf = connection.CreateCommand();
+                        instruccion_Saf.CommandText = "SELECT SafeMapIndex, Size, StartPoint, Location_X, Location_Y FROM " + Settings.DBServer + ".safezoneinfo WHERE SafeMapIndex =" + MapInfoList[i].Index;
+                        MySqlDataReader readerSafeZoneInfo = instruccion_Saf.ExecuteReader();
+
+                        while (readerSafeZoneInfo.Read())
+                            {
+                            MapInfoList[i].SafeZones.Add(new SafeZoneInfo(readerSafeZoneInfo) { Info = MapInfoList[i] });
+
+                            }
+                        readerSafeZoneInfo.Dispose();
+
+                        MySqlCommand instruccion_Min = connection.CreateCommand();
+                        instruccion_Min.CommandText = "SELECT MapMineIndex, Size, Mine, Location_X, Location_Y FROM " + Settings.DBServer + ".minezone WHERE MapMineIndex =" + MapInfoList[i].Index;
+                        MySqlDataReader readerMineZoneInfo = instruccion_Min.ExecuteReader();
+
+                        while (readerMineZoneInfo.Read())
+                            {
+                            MapInfoList[i].MineZones.Add(new MineZone(readerMineZoneInfo));
+                            }
+                        readerMineZoneInfo.Dispose();
+                        }
+
+                    connection.Close();
+
+                    }
+                catch (MySqlException ex)
+                    {
+                    SMain.Enqueue(ex);
+                    }
+                }
+
+            }
+        public void LoadDB_MagicInfo()
+            {
+            MagicInfoList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".magicinfo";
+                MySqlDataReader readerMagicInfo = instruccion.ExecuteReader();
+
+                while (readerMagicInfo.Read())
+                    {
+                    MagicInfoList.Add(new MagicInfo(readerMagicInfo));
+                    }
+
+                readerMagicInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        public void LoadDB_DragonInfo()
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".dragoninfo WHERE IndexID = 1";
+                MySqlDataReader readerDragonInfo = instruccion.ExecuteReader();
+
+                while (readerDragonInfo.Read())
+                    {
+                    DragonInfo = new DragonInfo(readerDragonInfo);
+                    }
+                readerDragonInfo.Dispose();
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        public void LoadDB_RespawnTimer()
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT BaseSpawnRate, CurrentTickcounter FROM " + Settings.DBServer + ".respawntimer";
+                MySqlDataReader readerrespawntimer = instruccion.ExecuteReader();
+
+                while (readerrespawntimer.Read())
+                    {
+                    RespawnTick = new RespawnTimer(readerrespawntimer);
+                    }
+
+                readerrespawntimer.Dispose();
+
+                MySqlCommand instruccion_option = connection.CreateCommand();
+                instruccion_option.CommandText = "SELECT UserCount, DelayLoss FROM " + Settings.DBServer + ".respawntickoption";
+
+                MySqlDataReader readerrespawntimeroption = instruccion_option.ExecuteReader();
+
+                while (readerrespawntimeroption.Read())
+                    {
+                    RespawnTickOption Option = new RespawnTickOption(readerrespawntimeroption);
+                    RespawnTick.Respawn.Add(Option);
+                    }
+
+                readerrespawntimeroption.Dispose();
+
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        public void LoadDB_ConquestInfo()
+            {
+            ConquestInfos.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".conquestinfo ";
+                MySqlDataReader readerconquestinfo = instruccion.ExecuteReader();
+
+
+                while (readerconquestinfo.Read())
+                    {
+                    ConquestInfos.Add(new ConquestInfo(readerconquestinfo));
+                    }
+                readerconquestinfo.Dispose();
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".conquestpoint WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerPoints = instruccion_mov.ExecuteReader();
+
+                    while (readerPoints.Read())
+                        {
+                        ConquestInfos[i].ControlPoints.Add(new ConquestFlagInfo(readerPoints));
+                        }
+
+                    readerPoints.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".conquestextramaps WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerExtraMaps = instruccion_mov.ExecuteReader();
+
+                    while (readerExtraMaps.Read())
+                        {
+                        ConquestInfos[i].ExtraMaps.Add(Convert.ToInt32(readerExtraMaps["ExtraMaps"]));
+                        }
+
+                    readerExtraMaps.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".ConquestArcherInfo WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerConquestGuards = instruccion_mov.ExecuteReader();
+
+                    while (readerConquestGuards.Read())
+                        {
+                        ConquestInfos[i].ConquestGuards.Add(new ConquestArcherInfo(readerConquestGuards));
+                        }
+
+                    readerConquestGuards.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".ConquestGateInfo WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerConquestGates = instruccion_mov.ExecuteReader();
+
+                    while (readerConquestGates.Read())
+                        {
+                        ConquestInfos[i].ConquestGates.Add(new ConquestGateInfo(readerConquestGates));
+                        }
+
+                    readerConquestGates.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".ConquestWallInfo WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerConquestWalls = instruccion_mov.ExecuteReader();
+
+                    while (readerConquestWalls.Read())
+                        {
+                        ConquestInfos[i].ConquestWalls.Add(new ConquestWallInfo(readerConquestWalls));
+                        }
+
+                    readerConquestWalls.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".ConquestSiegeInfo WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerConquestSieges = instruccion_mov.ExecuteReader();
+
+                    while (readerConquestSieges.Read())
+                        {
+                        ConquestInfos[i].ConquestSieges.Add(new ConquestSiegeInfo(readerConquestSieges));
+                        }
+
+                    readerConquestSieges.Dispose();
+                    }
+
+                for (int i = 0; i < ConquestInfos.Count; i++)
+                    {
+
+                    MySqlCommand instruccion_mov = connection.CreateCommand();
+                    instruccion_mov.CommandText = "SELECT * FROM " + Settings.DBServer + ".conquestflag WHERE IndexID =" + ConquestInfos[i].Index;
+                    MySqlDataReader readerConquestFlag = instruccion_mov.ExecuteReader();
+
+                    while (readerConquestFlag.Read())
+                        {
+                        ConquestInfos[i].ConquestFlags.Add(new ConquestFlagInfo(readerConquestFlag));
+                        }
+
+                    readerConquestFlag.Dispose();
+                    }
+
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+        #endregion
+        public void LoadDB()
+            {
+            lock (LoadLock)
+                {
+                if (Settings.SaveMysql)
+                    {
+                    try
+                        {
+
+                        MySqlConnection connection = new MySqlConnection(); //star conection 
+                        String connectionString;
+                        connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                        connection.ConnectionString = connectionString;
+                        connection.Open();
+
+                        MySqlCommand instruccion = connection.CreateCommand();
+
+                        instruccion.CommandText = "SELECT * FROM " + Settings.DBServer + ".servercount where IndexID = '1'";
+
+                        MySqlDataReader readergeneralcount = instruccion.ExecuteReader();
+
+                        while (readergeneralcount.Read())
+                            {
+
+                            LoadVersion = Convert.ToInt32(readergeneralcount["Version"]);
+                            LoadCustomVersion = Convert.ToInt32(readergeneralcount["CustomVersion"]);
+                            ItemIndex = Convert.ToInt32(readergeneralcount["ItemIndex"]);
+                            MonsterIndex = Convert.ToInt32(readergeneralcount["MonsterIndex"]);
+                            NPCIndex = Convert.ToInt32(readergeneralcount["NPCIndex"]);
+                            QuestIndex = Convert.ToInt32(readergeneralcount["QuestIndex"]);
+                            MapIndex = Convert.ToInt32(readergeneralcount["MapIndex"]);
+                            ConquestIndex = Convert.ToInt32(readergeneralcount["ConquestIndex"]);
+                            GameshopIndex = Convert.ToInt32(readergeneralcount["GameshopIndex"]);
+
+                            }
+
+                        readergeneralcount.Dispose();
+                        connection.Close();
+
+                        }
+                    catch (MySqlException ex)
+                        {
+                        SMain.Enqueue(ex);
+                        }
+
+                    LoadDB_MapInfo();
+                    LoadDB_ItemInfo();
+                    LoadDB_MonsterInfo();
+                    LoadDB_NPCInfo();
+                    LoadDB_QuestInfo();
+
+                    LoadDB_MagicInfo();
+                    LoadDB_DragonInfo();
+                    LoadDB_RespawnTimer();
+                    LoadDB_ConquestInfo();
+                    LoadDB_GameShop();
+
+                    }
+                else
+                    {
+                    
+                    using (FileStream stream = File.OpenRead(DatabasePath))
+                    using (BinaryReader reader = new BinaryReader(stream))
+                        {
+                        LoadVersion = reader.ReadInt32();
+                        if (LoadVersion > 57)
+                            LoadCustomVersion = reader.ReadInt32();
+                        MapIndex = reader.ReadInt32();
+                        ItemIndex = reader.ReadInt32();
+                        MonsterIndex = reader.ReadInt32();
+
+                        if (LoadVersion > 33)
+                            {
+                            NPCIndex = reader.ReadInt32();
+                            QuestIndex = reader.ReadInt32();
+                            }
+                        if (LoadVersion >= 63)
+                            {
+                            GameshopIndex = reader.ReadInt32();
+                            }
+
+                        if (LoadVersion >= 66)
+                            {
+                            ConquestIndex = reader.ReadInt32();
+                            }
+
+                        if (LoadVersion >= 68)
+                            RespawnIndex = reader.ReadInt32();
+
+                        int count = reader.ReadInt32();
+                        MapInfoList.Clear();
+                        for (int i = 0; i < count; i++)
+                            MapInfoList.Add(new MapInfo(reader));
+
+                        count = reader.ReadInt32();
+                        ItemInfoList.Clear();
+                        for (int i = 0; i < count; i++)
+                            {
+                            ItemInfoList.Add(new ItemInfo(reader, LoadVersion, LoadCustomVersion));
+                            if ((ItemInfoList[i] != null) && (ItemInfoList[i].RandomStatsId < Settings.RandomItemStatsList.Count))
+                                {
+                                ItemInfoList[i].RandomStats = Settings.RandomItemStatsList[ItemInfoList[i].RandomStatsId];
+                                }
+                            }
+
+                        count = reader.ReadInt32();
+                        MonsterInfoList.Clear();
+                        for (int i = 0; i < count; i++)
+                            MonsterInfoList.Add(new MonsterInfo(reader));
+
+                        if (LoadVersion > 33)
+                            {
+                            count = reader.ReadInt32();
+                            NPCInfoList.Clear();
+                            for (int i = 0; i < count; i++)
+                                NPCInfoList.Add(new NPCInfo(reader));
+
+                            count = reader.ReadInt32();
+                            QuestInfoList.Clear();
+                            for (int i = 0; i < count; i++)
+                                QuestInfoList.Add(new QuestInfo(reader));
+                            }
+
+                        if (LoadVersion >= 11) DragonInfo = new DragonInfo(reader);
+                        else DragonInfo = new DragonInfo();
+                        if (LoadVersion >= 58)
+                            {
+                            count = reader.ReadInt32();
+                            for (int i = 0; i < count; i++)
+                                MagicInfoList.Add(new MagicInfo(reader, LoadVersion, LoadCustomVersion));
+                            }
+                        FillMagicInfoList();
+                        if (LoadVersion <= 70)
+                            UpdateMagicInfo();
+
+                        if (LoadVersion >= 63)
+                            {
+                            count = reader.ReadInt32();
+                            GameShopList.Clear();
+                            for (int i = 0; i < count; i++)
+                                {
+                                GameShopItem item = new GameShopItem(reader, LoadVersion, LoadCustomVersion);
+                                if (SMain.Envir.BindGameShop(item))
+                                    {
+                                    GameShopList.Add(item);
+                                    }
+                                }
+                            }
+
+                        if (LoadVersion >= 66)
+                            {
+                            ConquestInfos.Clear();
+                            count = reader.ReadInt32();
+                            for (int i = 0; i < count; i++)
+                                {
+                                ConquestInfos.Add(new ConquestInfo(reader));
+                                }
+                            }
+
+                        if (LoadVersion > 67)
+                            RespawnTick = new RespawnTimer(reader);
+
+                        //SaveDB();
+                        }
+
+                    }
+                Settings.LinkGuildCreationItems(ItemInfoList);
+                }
+
+            }
+
+        public void LoadAccountsDB()
+            {
+
+            AccountList.Clear();
+            CharacterList.Clear();
+            Auctions.Clear();
+            GameshopLog.Clear();
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+
+                instruccion.CommandText = "SELECT * FROM " + Settings.DBAccount + ".generalcount where IndexID = '1'";
+
+                MySqlDataReader readergeneralcount = instruccion.ExecuteReader();
+
+                while (readergeneralcount.Read())
+                    {
+
+                    LoadVersion = Convert.ToInt32(readergeneralcount["Version"]);
+
+                    LoadCustomVersion = Convert.ToInt32(readergeneralcount["CustomVersion"]);
+                    NextAccountID = Convert.ToInt32(readergeneralcount["NextAccountID"]);
+                    NextCharacterID = Convert.ToInt32(readergeneralcount["NextCharacterID"]);
+                    NextUserItemID = Convert.ToUInt64(readergeneralcount["NextUserItemID"]);
+
+                    GuildCount = Convert.ToInt32(readergeneralcount["GuildList"]);
+                    NextGuildID = Convert.ToInt32(readergeneralcount["NextGuildID"]);
+                    NextMailID = Convert.ToUInt64(readergeneralcount["NextMailID"]);
+                    NextAuctionID = Convert.ToUInt64(readergeneralcount["NextAuctionID"]);
+
+                    }
+
+                readergeneralcount.Dispose();
+
+                //foreach (AuctionInfo auction in Auctions)
+                //    auction.CharacterInfo.AccountInfo.Auctions.Remove(auction);
+
+
+                MySqlCommand instruccionAuctions = connection.CreateCommand();
+
+                instruccionAuctions.CommandText = "SELECT * FROM " + Settings.DBAccount + ".auctions";
+
+                MySqlDataReader readerAuctionsDB = instruccionAuctions.ExecuteReader();
+
+                while (readerAuctionsDB.Read())
+                    {
+                    AuctionInfo auction = new AuctionInfo(readerAuctionsDB);
+
+                    auction.CharacterInfo = GetCharacterInfo(auction.CharacterIndex);
+                    Auctions.AddLast(auction);
+                    //  auction.CharacterInfo.AccountInfo.Auctions.AddLast(auction);
+
+                    }
+
+                readerAuctionsDB.Dispose();
+
+                if (ResetGS)
+                    {
+                    ClearGameshopLog();
+                    }
+                else
+                    {
+                    MySqlCommand instruccionGames = connection.CreateCommand();
+
+                    instruccionGames.CommandText = "SELECT * FROM " + Settings.DBAccount + ".gameshoplog";
+
+                    MySqlDataReader readerGamesDB = instruccionGames.ExecuteReader();
+
+                    while (readerGamesDB.Read())
+                        {
+
+                        GameshopLog.Add(Convert.ToInt32(readerGamesDB["Key_"]), Convert.ToInt32(readerGamesDB["Value"]));
+
+                        }
+
+                    readerGamesDB.Dispose();
+
+                    }
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+
         public void LoadAccounts()
-        {
+            {
             //reset ranking
             for (int i = 0; i < RankClass.Count(); i++)
-            {
+                {
                 if (RankClass[i] != null)
                     RankClass[i].Clear();
                 else
                     RankClass[i] = new List<Rank_Character_Info>();
-            }
+                }
             RankTop.Clear();
             for (int i = 0; i < RankBottomLevel.Count(); i++)
-            {
+                {
                 RankBottomLevel[i] = 0;
-            }
+                }
 
 
             lock (LoadLock)
-            {
-                if (!File.Exists(AccountPath))
-                    SaveAccounts();
+                {
+               // if (!File.Exists(AccountPath))
+               //     SaveAccounts();
 
                 using (FileStream stream = File.OpenRead(AccountPath))
                 using (BinaryReader reader = new BinaryReader(stream))
-                {
+                    {
                     LoadVersion = reader.ReadInt32();
-                    if (LoadVersion > 57) LoadCustomVersion = reader.ReadInt32();
+                    if (LoadVersion > 57)
+                        LoadCustomVersion = reader.ReadInt32();
                     NextAccountID = reader.ReadInt32();
                     NextCharacterID = reader.ReadInt32();
                     NextUserItemID = reader.ReadUInt64();
 
                     if (LoadVersion > 27)
-                    {
+                        {
                         GuildCount = reader.ReadInt32();
                         NextGuildID = reader.ReadInt32();
-                    }
+                        }
 
                     int count = reader.ReadInt32();
+
                     AccountList.Clear();
                     CharacterList.Clear();
                     for (int i = 0; i < count; i++)
-                    {
+                        {
                         AccountList.Add(new AccountInfo(reader));
                         CharacterList.AddRange(AccountList[i].Characters);
-                    }
+                        }
 
                     if (LoadVersion < 7) return;
 
@@ -1347,145 +2561,137 @@ namespace Server.MirEnvir
                     if (LoadVersion >= 8)
                         NextAuctionID = reader.ReadUInt64();
 
+
                     count = reader.ReadInt32();
                     for (int i = 0; i < count; i++)
-                    {
+                        {
                         AuctionInfo auction = new AuctionInfo(reader, LoadVersion, LoadCustomVersion);
 
                         if (!BindItem(auction.Item) || !BindCharacter(auction)) continue;
 
                         Auctions.AddLast(auction);
                         auction.CharacterInfo.AccountInfo.Auctions.AddLast(auction);
-                    }
-
-                    if (LoadVersion == 7)
-                    {
-                        foreach (AuctionInfo auction in Auctions)
-                        {
-                            if (auction.Sold && auction.Expired) auction.Expired = false;
-
-                            auction.AuctionID = ++NextAuctionID;
                         }
-                    }
 
-                    if(LoadVersion > 43)
-                    {
+
+                    if (LoadVersion > 43)
+                        {
                         NextMailID = reader.ReadUInt64();
 
                         Mail.Clear();
 
                         count = reader.ReadInt32();
                         for (int i = 0; i < count; i++)
-                        {
+                            {
                             Mail.Add(new MailInfo(reader, LoadVersion, LoadCustomVersion));
+                            }
                         }
-                    }
 
-                    if(LoadVersion >= 63)
-                    {
+                    if (LoadVersion >= 63)
+                        {
                         int logCount = reader.ReadInt32();
                         for (int i = 0; i < logCount; i++)
-                        {
+                            {
                             GameshopLog.Add(reader.ReadInt32(), reader.ReadInt32());
-                        }
+                            }
 
                         if (ResetGS) ClearGameshopLog();
-                    }
+                        }
 
-                    if (LoadVersion >= 68)
-                    {
+
+                    if (LoadVersion >= 168)
+                        {
                         int SaveCount = reader.ReadInt32();
                         for (int i = 0; i < SaveCount; i++)
-                        {
+                            {
                             RespawnSave Saved = new RespawnSave(reader);
                             foreach (MapRespawn Respawn in SavedSpawns)
-                            {
-                                if (Respawn.Info.RespawnIndex == Saved.RespawnIndex)
                                 {
+                                if (Respawn.Info.RespawnIndex == Saved.RespawnIndex)
+                                    {
                                     Respawn.NextSpawnTick = Saved.NextSpawnTick;
                                     if ((Saved.Spawned) && ((Respawn.Info.Count * spawnmultiplyer) > Respawn.Count))
-                                    {
+                                        {
                                         int mobcount = (Respawn.Info.Count * spawnmultiplyer) - Respawn.Count;
                                         for (int j = 0; j < mobcount; j++)
-                                        {
+                                            {
                                             Respawn.Spawn();
+                                            }
                                         }
                                     }
                                 }
-                            }
 
+                            }
                         }
                     }
                 }
             }
-        }
 
         public void LoadGuilds()
-        {
-            lock (LoadLock)
             {
+            lock (LoadLock)
+                {
                 int count = 0;
 
                 GuildList.Clear();
 
                 for (int i = 0; i < GuildCount; i++)
-                {
+                    {
                     GuildObject newGuild;
                     if (File.Exists(Settings.GuildPath + i.ToString() + ".mgd"))
-                    {
+                        {
                         using (FileStream stream = File.OpenRead(Settings.GuildPath + i.ToString() + ".mgd"))
                         using (BinaryReader reader = new BinaryReader(stream))
                             newGuild = new GuildObject(reader);
-    
+
                         //if (!newGuild.Ranks.Any(a => (byte)a.Options == 255)) continue;
                         //if (GuildList.Any(e => e.Name == newGuild.Name)) continue;
                         GuildList.Add(newGuild);
 
                         count++;
+                        }
                     }
-                }
 
                 if (count != GuildCount) GuildCount = count;
 
-                
-            }
-        }
 
-        public void LoadFishingDrops()
-        {
-            FishingDrops.Clear();
-            
-            for (byte i = 0; i <= 19; i++)
+                }
+            }
+  public void LoadFishingDrops()
             {
+            FishingDrops.Clear();
+
+            for (byte i = 0; i <= 19; i++)
+                {
                 string path = Path.Combine(Settings.DropPath, Settings.FishingDropFilename + ".txt");
 
                 path = path.Replace("00", i.ToString("D2"));
 
                 if (!File.Exists(path) && i < 2)
-                {
+                    {
                     FileStream newfile = File.Create(path);
                     newfile.Close();
-                }
+                    }
 
                 if (!File.Exists(path)) continue;
 
                 string[] lines = File.ReadAllLines(path);
 
                 for (int j = 0; j < lines.Length; j++)
-                {
+                    {
                     if (lines[j].StartsWith(";") || string.IsNullOrWhiteSpace(lines[j])) continue;
 
                     DropInfo drop = DropInfo.FromLine(lines[j]);
                     if (drop == null)
-                    {
+                        {
                         SMain.Enqueue(string.Format("Could not load fishing drop: {0}", lines[j]));
                         continue;
-                    }
+                        }
 
                     drop.Type = i;
 
                     FishingDrops.Add(drop);
-                }
+                    }
 
                 FishingDrops.Sort((drop1, drop2) =>
                 {
@@ -1496,37 +2702,37 @@ namespace Server.MirEnvir
 
                     return drop1.Item.Type.CompareTo(drop2.Item.Type);
                 });
-            }  
-        }
+                }
+            }
 
         public void LoadAwakeningMaterials()
-        {
+            {
             AwakeningDrops.Clear();
 
             string path = Path.Combine(Settings.DropPath, Settings.AwakeningDropFilename + ".txt");
 
             if (!File.Exists(path))
-            {
+                {
                 FileStream newfile = File.Create(path);
                 newfile.Close();
 
-            }
+                }
 
             string[] lines = File.ReadAllLines(path);
 
             for (int i = 0; i < lines.Length; i++)
-            {
+                {
                 if (lines[i].StartsWith(";") || string.IsNullOrWhiteSpace(lines[i])) continue;
 
                 DropInfo drop = DropInfo.FromLine(lines[i]);
                 if (drop == null)
-                {
+                    {
                     SMain.Enqueue(string.Format("Could not load Awakening drop: {0}", lines[i]));
                     continue;
-                }
+                    }
 
                 AwakeningDrops.Add(drop);
-            }
+                }
 
             AwakeningDrops.Sort((drop1, drop2) =>
             {
@@ -1537,35 +2743,35 @@ namespace Server.MirEnvir
 
                 return drop1.Item.Type.CompareTo(drop2.Item.Type);
             });
-        }
+            }
 
         public void LoadStrongBoxDrops()
-        {
+            {
             StrongboxDrops.Clear();
 
             string path = Path.Combine(Settings.DropPath, Settings.StrongboxDropFilename + ".txt");
 
             if (!File.Exists(path))
-            {
+                {
                 FileStream newfile = File.Create(path);
                 newfile.Close();
-            }
+                }
 
             string[] lines = File.ReadAllLines(path);
 
             for (int i = 0; i < lines.Length; i++)
-            {
+                {
                 if (lines[i].StartsWith(";") || string.IsNullOrWhiteSpace(lines[i])) continue;
 
                 DropInfo drop = DropInfo.FromLine(lines[i]);
                 if (drop == null)
-                {
+                    {
                     SMain.Enqueue(string.Format("Could not load strongbox drop: {0}", lines[i]));
                     continue;
-                }
+                    }
 
                 StrongboxDrops.Add(drop);
-            }
+                }
 
             StrongboxDrops.Sort((drop1, drop2) =>
             {
@@ -1576,36 +2782,36 @@ namespace Server.MirEnvir
 
                 return drop1.Item.Type.CompareTo(drop2.Item.Type);
             });
-        }
+            }
 
         public void LoadBlackStoneDrops()
-        {
+            {
             BlackstoneDrops.Clear();
 
             string path = Path.Combine(Settings.DropPath, Settings.BlackstoneDropFilename + ".txt");
 
             if (!File.Exists(path))
-            {
+                {
                 FileStream newfile = File.Create(path);
                 newfile.Close();
 
-            }
+                }
 
             string[] lines = File.ReadAllLines(path);
 
             for (int i = 0; i < lines.Length; i++)
-            {
+                {
                 if (lines[i].StartsWith(";") || string.IsNullOrWhiteSpace(lines[i])) continue;
 
                 DropInfo drop = DropInfo.FromLine(lines[i]);
                 if (drop == null)
-                {
+                    {
                     SMain.Enqueue(string.Format("Could not load blackstone drop: {0}", lines[i]));
                     continue;
-                }
+                    }
 
                 BlackstoneDrops.Add(drop);
-            }
+                }
 
             BlackstoneDrops.Sort((drop1, drop2) =>
             {
@@ -1616,12 +2822,12 @@ namespace Server.MirEnvir
 
                 return drop1.Item.Type.CompareTo(drop2.Item.Type);
             });
-        }
+            }
 
         public void LoadConquests()
-        {
-            lock (LoadLock)
             {
+            lock (LoadLock)
+                {
                 int count = 0;
 
                 Conquests.Clear();
@@ -1635,146 +2841,146 @@ namespace Server.MirEnvir
                 ConquestFlagObject tempFlag;
 
                 for (int i = 0; i < ConquestInfos.Count; i++)
-                {
+                    {
                     newConquest = null;
                     tempMap = GetMap(ConquestInfos[i].MapIndex);
 
                     if (tempMap == null) continue;
 
                     if (File.Exists(Settings.ConquestsPath + ConquestInfos[i].Index.ToString() + ".mcd"))
-                    {
+                        {
                         using (FileStream stream = File.OpenRead(Settings.ConquestsPath + ConquestInfos[i].Index.ToString() + ".mcd"))
                         using (BinaryReader reader = new BinaryReader(stream))
                             newConquest = new ConquestObject(reader) { Info = ConquestInfos[i], ConquestMap = tempMap };
 
                         for (int k = 0; k < GuildList.Count; k++)
-                        {
-                            if (newConquest.Owner == GuildList[k].Guildindex)
                             {
+                            if (newConquest.Owner == GuildList[k].Guildindex)
+                                {
                                 newConquest.Guild = GuildList[k];
                                 GuildList[k].Conquest = newConquest;
+                                }
                             }
-                        }
 
                         Conquests.Add(newConquest);
                         tempMap.Conquest.Add(newConquest);
                         count++;
-                    }
+                        }
                     else
-                    {
+                        {
                         newConquest = new ConquestObject { Info = ConquestInfos[i], NeedSave = true, ConquestMap = tempMap };
 
                         Conquests.Add(newConquest);
                         tempMap.Conquest.Add(newConquest);
-                    }
+                        }
 
                     //Bind Info to Saved Archer objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ConquestGuards.Count; j++)
-                    {
+                        {
                         tempArcher = newConquest.ArcherList.FirstOrDefault(x => x.Index == ConquestInfos[i].ConquestGuards[j].Index);
 
                         if (tempArcher != null)
-                        {
+                            {
                             tempArcher.Info = ConquestInfos[i].ConquestGuards[j];
                             tempArcher.Conquest = newConquest;
-                        }
+                            }
                         else
-                        {
+                            {
                             newConquest.ArcherList.Add(new ConquestArcherObject { Info = ConquestInfos[i].ConquestGuards[j], Alive = true, Index = ConquestInfos[i].ConquestGuards[j].Index, Conquest = newConquest });
+                            }
                         }
-                    }
 
                     //Remove archers that have been removed from DB
                     for (int j = 0; j < newConquest.ArcherList.Count; j++)
-                    {
+                        {
                         if (newConquest.ArcherList[j].Info == null)
                             newConquest.ArcherList.Remove(newConquest.ArcherList[j]);
-                    }
+                        }
 
                     //Bind Info to Saved Gate objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ConquestGates.Count; j++)
-                    {
+                        {
                         tempGate = newConquest.GateList.FirstOrDefault(x => x.Index == ConquestInfos[i].ConquestGates[j].Index);
 
                         if (tempGate != null)
-                        {
+                            {
                             tempGate.Info = ConquestInfos[i].ConquestGates[j];
                             tempGate.Conquest = newConquest;
-                        }
+                            }
                         else
-                        {
+                            {
                             newConquest.GateList.Add(new ConquestGateObject { Info = ConquestInfos[i].ConquestGates[j], Health = uint.MaxValue, Index = ConquestInfos[i].ConquestGates[j].Index, Conquest = newConquest });
+                            }
                         }
-                    }
 
                     //Bind Info to Saved Flag objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ConquestFlags.Count; j++)
-                    {
+                        {
                         newConquest.FlagList.Add(new ConquestFlagObject { Info = ConquestInfos[i].ConquestFlags[j], Index = ConquestInfos[i].ConquestFlags[j].Index, Conquest = newConquest });
-                    }
+                        }
 
                     //Remove Gates that have been removed from DB
                     for (int j = 0; j < newConquest.GateList.Count; j++)
-                    {
+                        {
                         if (newConquest.GateList[j].Info == null)
                             newConquest.GateList.Remove(newConquest.GateList[j]);
-                    }
+                        }
 
                     //Bind Info to Saved Wall objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ConquestWalls.Count; j++)
-                    {
+                        {
                         tempWall = newConquest.WallList.FirstOrDefault(x => x.Index == ConquestInfos[i].ConquestWalls[j].Index);
 
                         if (tempWall != null)
-                        {
+                            {
                             tempWall.Info = ConquestInfos[i].ConquestWalls[j];
                             tempWall.Conquest = newConquest;
-                        }
+                            }
                         else
-                        {
+                            {
                             newConquest.WallList.Add(new ConquestWallObject { Info = ConquestInfos[i].ConquestWalls[j], Index = ConquestInfos[i].ConquestWalls[j].Index, Health = uint.MaxValue, Conquest = newConquest });
+                            }
                         }
-                    }
 
                     //Remove Walls that have been removed from DB
                     for (int j = 0; j < newConquest.WallList.Count; j++)
-                    {
+                        {
                         if (newConquest.WallList[j].Info == null)
                             newConquest.WallList.Remove(newConquest.WallList[j]);
-                    }
+                        }
 
-                    
+
                     //Bind Info to Saved Siege objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ConquestSieges.Count; j++)
-                    {
+                        {
                         tempSiege = newConquest.SiegeList.FirstOrDefault(x => x.Index == ConquestInfos[i].ConquestSieges[j].Index);
 
                         if (tempSiege != null)
-                        {
+                            {
                             tempSiege.Info = ConquestInfos[i].ConquestSieges[j];
                             tempSiege.Conquest = newConquest;
-                        }
+                            }
                         else
-                        {
+                            {
                             newConquest.SiegeList.Add(new ConquestSiegeObject { Info = ConquestInfos[i].ConquestSieges[j], Index = ConquestInfos[i].ConquestSieges[j].Index, Health = uint.MaxValue, Conquest = newConquest });
+                            }
                         }
-                    }
 
                     //Remove Siege that have been removed from DB
                     for (int j = 0; j < newConquest.SiegeList.Count; j++)
-                    {
+                        {
                         if (newConquest.SiegeList[j].Info == null)
                             newConquest.SiegeList.Remove(newConquest.SiegeList[j]);
-                    }
+                        }
 
                     //Bind Info to Saved Flag objects or create new objects
                     for (int j = 0; j < ConquestInfos[i].ControlPoints.Count; j++)
-                    {
+                        {
                         ConquestFlagObject cp = null;
                         newConquest.ControlPoints.Add(cp = new ConquestFlagObject { Info = ConquestInfos[i].ControlPoints[j], Index = ConquestInfos[i].ControlPoints[j].Index, Conquest = newConquest }, new Dictionary<GuildObject, int>());
 
                         cp.Spawn();
-                    }
+                        }
 
 
                     newConquest.LoadArchers();
@@ -1783,71 +2989,71 @@ namespace Server.MirEnvir
                     newConquest.LoadSieges();
                     newConquest.LoadFlags();
                     newConquest.LoadNPCs();
+                    }
                 }
             }
-        }
 
         private bool BindCharacter(AuctionInfo auction)
-        {
-            for (int i = 0; i < CharacterList.Count; i++)
             {
+            for (int i = 0; i < CharacterList.Count; i++)
+                {
                 if (CharacterList[i].Index != auction.CharacterIndex) continue;
 
                 auction.CharacterInfo = CharacterList[i];
                 return true;
-            }
+                }
             return false;
 
-        }
+            }
 
         public void Start()
-        {
+            {
             if (Running || _thread != null) return;
 
             Running = true;
 
-            _thread = new Thread(WorkLoop) {IsBackground = true};
+            _thread = new Thread(WorkLoop) { IsBackground = true };
             _thread.Start();
 
-        }
+            }
         public void Stop()
-        {
+            {
             Running = false;
 
             lock (_locker)
-            {
+                {
                 Monitor.PulseAll(_locker);         // changing a blocking condition. (this makes the threads wake up!)
-            }
+                }
 
             //simply intterupt all the mob threads if they are running (will give an invisible error on them but fastest way of getting rid of them on shutdowns)
             for (int i = 1; i < MobThreading.Length; i++)
-            {
+                {
                 if (MobThreads[i] != null)
                     MobThreads[i].EndTime = Time + 9999;
                 if ((MobThreading[i] != null) &&
                     (MobThreading[i].ThreadState != System.Threading.ThreadState.Stopped) && (MobThreading[i].ThreadState != System.Threading.ThreadState.Unstarted))
-                {
+                    {
                     MobThreading[i].Interrupt();
+                    }
                 }
+
+
+            while (_thread != null)
+                Thread.Sleep(1);
             }
 
-
-                while (_thread != null)
-                    Thread.Sleep(1);
-        }
-
         public void Reboot()
-        {
+            {
             (new Thread(() =>
             {
                 SMain.Enqueue("Server rebooting...");
                 Stop();
                 Start();
             })).Start();
-        }
-        
+            }
+
         private void StartEnvir()
-        {
+            {
             Players.Clear();
             StartPoints.Clear();
             StartItems.Clear();
@@ -1857,16 +3063,26 @@ namespace Server.MirEnvir
             MonsterCount = 0;
 
             LoadDB();
+            //Start Load DB
+
+
+            SMain.Enqueue(string.Format("{0} Items Loaded ", ItemInfoList.Count));
+            SMain.Enqueue(string.Format("{0} Monsters Loaded ", MonsterInfoList.Count));
+            SMain.Enqueue(string.Format("{0} NPC'sLoaded ", NPCInfoList.Count));
+            SMain.Enqueue(string.Format("{0} Quests Loaded ", QuestInfoList.Count));
+            SMain.Enqueue(string.Format("{0} Magics Loaded ", MagicInfoList.Count));
 
             for (int i = 0; i < MapInfoList.Count; i++)
                 MapInfoList[i].CreateMap();
             SMain.Enqueue(string.Format("{0} Maps Loaded.", MapInfoList.Count));
 
             for (int i = 0; i < ItemInfoList.Count; i++)
-            {
+                {
                 if (ItemInfoList[i].StartItem)
                     StartItems.Add(ItemInfoList[i]);
-            }
+
+                }
+
 
             for (int i = 0; i < MonsterInfoList.Count; i++)
                 MonsterInfoList[i].LoadDrops();
@@ -1878,28 +3094,35 @@ namespace Server.MirEnvir
             SMain.Enqueue("Drops Loaded.");
 
             if (DragonInfo.Enabled)
-            {
+                {
                 DragonSystem = new Dragon(DragonInfo);
                 if (DragonSystem != null)
-                {
+                    {
                     if (DragonSystem.Load()) DragonSystem.Info.LoadDrops();
-                }
+                    }
 
                 SMain.Enqueue("Dragon Loaded.");
-            }
+                }
 
             DefaultNPC = new NPCObject(new NPCInfo() { Name = "DefaultNPC", FileName = Settings.DefaultNPCFilename, IsDefault = true });
             MonsterNPC = new NPCObject(new NPCInfo() { Name = "MonsterNPC", FileName = Settings.MonsterNPCFilename, IsDefault = true });
             RobotNPC = new NPCObject(new NPCInfo() { Name = "RobotNPC", FileName = Settings.RobotNPCFilename, IsDefault = true, IsRobot = true });
 
             SMain.Enqueue("Envir Started.");
-        }
+            }
         private void StartNetwork()
-        {
+            {
             Connections.Clear();
 
-            LoadAccounts();
+            if (Settings.SaveMysql)
+                {
+                LoadAccountsDB();
+                }
+            else
+                { 
+                LoadAccounts();
 
+                }
             LoadGuilds();
 
             LoadConquests();
@@ -1909,18 +3132,18 @@ namespace Server.MirEnvir
             _listener.BeginAcceptTcpClient(Connection, null);
 
             if (StatusPortEnabled)
-            {
+                {
                 _StatusPort = new TcpListener(IPAddress.Parse(Settings.IPAddress), 3000);
                 _StatusPort.Start();
                 _StatusPort.BeginAcceptTcpClient(StatusConnection, null);
-            }
+                }
             SMain.Enqueue("Network Started.");
 
             //FixGuilds();
-        }
+            }
 
         private void StopEnvir()
-        {
+            {
             SaveGoods(true);
 
             MapList.Clear();
@@ -1934,83 +3157,83 @@ namespace Server.MirEnvir
             GC.Collect();
 
             SMain.Enqueue("Envir Stopped.");
-        }
+            }
         private void StopNetwork()
-        {
+            {
             _listener.Stop();
             lock (Connections)
-            {
+                {
                 for (int i = Connections.Count - 1; i >= 0; i--)
                     Connections[i].SendDisconnect(0);
-            }
+                }
 
             if (StatusPortEnabled)
-            {
+                {
                 _StatusPort.Stop();
                 for (int i = StatusConnections.Count - 1; i >= 0; i--)
                     StatusConnections[i].SendDisconnect();
-            }
+                }
 
             long expire = Time + 5000;
 
             while (Connections.Count != 0 && Stopwatch.ElapsedMilliseconds < expire)
-            {
+                {
                 Time = Stopwatch.ElapsedMilliseconds;
 
                 for (int i = Connections.Count - 1; i >= 0; i--)
                     Connections[i].Process();
 
                 Thread.Sleep(1);
-            }
-            
+                }
+
 
             Connections.Clear();
 
             expire = Time + 10000;
             while (StatusConnections.Count != 0 && Stopwatch.ElapsedMilliseconds < expire)
-            {
+                {
                 Time = Stopwatch.ElapsedMilliseconds;
 
                 for (int i = StatusConnections.Count - 1; i >= 0; i--)
                     StatusConnections[i].Process();
 
                 Thread.Sleep(1);
-            }
+                }
 
 
             StatusConnections.Clear();
             SMain.Enqueue("Network Stopped.");
-        }
+            }
 
         private void CleanUp()
-        {
-            for (int i = 0; i < CharacterList.Count; i++)
             {
+            for (int i = 0; i < CharacterList.Count; i++)
+                {
                 CharacterInfo info = CharacterList[i];
 
                 if (info.Deleted)
-                {
+                    {
                     #region Mentor Cleanup
                     if (info.Mentor > 0)
-                    {
+                        {
                         CharacterInfo Mentor = GetCharacterInfo(info.Mentor);
 
                         if (Mentor != null)
-                        {
+                            {
                             Mentor.Mentor = 0;
                             Mentor.MentorExp = 0;
                             Mentor.isMentor = false;
-                        }
+                            }
 
                         info.Mentor = 0;
                         info.MentorExp = 0;
                         info.isMentor = false;
-                    }
+                        }
                     #endregion
 
                     #region Marriage Cleanup
                     if (info.Married > 0)
-                    {
+                        {
                         CharacterInfo Lover = GetCharacterInfo(info.Married);
 
                         info.Married = 0;
@@ -2020,261 +3243,345 @@ namespace Server.MirEnvir
                         Lover.MarriedDate = DateTime.Now;
                         if (Lover.Equipment[(int)EquipmentSlot.RingL] != null)
                             Lover.Equipment[(int)EquipmentSlot.RingL].WeddingRing = -1;
-                    }
+                        }
                     #endregion
 
                     if (info.DeleteDate < DateTime.Now.AddDays(-7))
-                    {
-                        //delete char from db
-                    }
-                }
-
-                if(info.Mail.Count > Settings.MailCapacity)
-                {
-                    for (int j = (info.Mail.Count - 1 - (int)Settings.MailCapacity); j >= 0; j--)
-                    {
-                        if (info.Mail[j].DateOpened > DateTime.Now && info.Mail[j].Collected && info.Mail[j].Items.Count == 0 && info.Mail[j].Gold == 0)
                         {
+                        //delete char from db
+                        }
+                    }
+
+                if (info.Mail.Count > Settings.MailCapacity)
+                    {
+                    for (int j = (info.Mail.Count - 1 - (int)Settings.MailCapacity); j >= 0; j--)
+                        {
+                        if (info.Mail[j].DateOpened > DateTime.Now && info.Mail[j].Collected && info.Mail[j].Items.Count == 0 && info.Mail[j].Gold == 0)
+                            {
                             info.Mail.Remove(info.Mail[j]);
+                            }
                         }
                     }
                 }
             }
-        }
 
         private void Connection(IAsyncResult result)
-        {
+            {
             if (!Running || !_listener.Server.IsBound) return;
 
             try
-            {
+                {
                 TcpClient tempTcpClient = _listener.EndAcceptTcpClient(result);
                 lock (Connections)
                     Connections.Add(new MirConnection(++_sessionID, tempTcpClient));
-            }
+                }
             catch (Exception ex)
-            {
+                {
                 SMain.Enqueue(ex);
-            }
+                }
             finally
-            {
+                {
                 while (Connections.Count >= Settings.MaxUser)
                     Thread.Sleep(1);
 
                 if (Running && _listener.Server.IsBound)
                     _listener.BeginAcceptTcpClient(Connection, null);
+                }
             }
-        }
 
         private void StatusConnection(IAsyncResult result)
-        {
+            {
             if (!Running || !_StatusPort.Server.IsBound) return;
 
             try
-            {
+                {
                 TcpClient tempTcpClient = _StatusPort.EndAcceptTcpClient(result);
                 lock (StatusConnections)
                     StatusConnections.Add(new MirStatusConnection(tempTcpClient));
-            }
+                }
             catch (Exception ex)
-            {
+                {
                 SMain.Enqueue(ex);
-            }
+                }
             finally
-            {
+                {
                 while (StatusConnections.Count >= 5) //dont allow to many status port connections it's just an abuse thing
                     Thread.Sleep(1);
 
                 if (Running && _StatusPort.Server.IsBound)
                     _StatusPort.BeginAcceptTcpClient(StatusConnection, null);
+                }
             }
-        }
-     
+
         public void NewAccount(ClientPackets.NewAccount p, MirConnection c)
-        {
+            {
             if (!Settings.AllowNewAccount)
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 0});
-                return;
-            }
-
-            if (!AccountIDReg.IsMatch(p.AccountID))
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 1});
-                return;
-            }
-
-            if (!PasswordReg.IsMatch(p.Password))
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 2});
-                return;
-            }
-            if (!string.IsNullOrWhiteSpace(p.EMailAddress) && !EMailReg.IsMatch(p.EMailAddress) ||
-                p.EMailAddress.Length > 50)
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 3});
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(p.UserName) && p.UserName.Length > 20)
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 4});
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(p.SecretQuestion) && p.SecretQuestion.Length > 30)
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 5});
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(p.SecretAnswer) && p.SecretAnswer.Length > 30)
-            {
-                c.Enqueue(new ServerPackets.NewAccount {Result = 6});
-                return;
-            }
-
-            lock (AccountLock)
-            {
-                if (AccountExists(p.AccountID))
                 {
-                    c.Enqueue(new ServerPackets.NewAccount {Result = 7});
-                    return;
+                c.Enqueue(new ServerPackets.NewAccount { Result = 0 });
+                return;
                 }
 
-                AccountList.Add(new AccountInfo(p) {Index = ++NextAccountID, CreationIP = c.IPAddress});
-
-
-                c.Enqueue(new ServerPackets.NewAccount {Result = 8});
-            }
-        }
-        public void ChangePassword(ClientPackets.ChangePassword p, MirConnection c)
-        {
-            if (!Settings.AllowChangePassword)
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 0});
+            if (!AccountIDReg.IsMatch(p.AccountID))
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 1 });
                 return;
+                }
+
+            if (!PasswordReg.IsMatch(p.Password))
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 2 });
+                return;
+                }
+            if (!string.IsNullOrWhiteSpace(p.EMailAddress) && !EMailReg.IsMatch(p.EMailAddress) ||
+                p.EMailAddress.Length > 50)
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 3 });
+                return;
+                }
+
+            if (!string.IsNullOrWhiteSpace(p.UserName) && p.UserName.Length > 20)
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 4 });
+                return;
+                }
+
+            if (!string.IsNullOrWhiteSpace(p.SecretQuestion) && p.SecretQuestion.Length > 30)
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 5 });
+                return;
+                }
+
+            if (!string.IsNullOrWhiteSpace(p.SecretAnswer) && p.SecretAnswer.Length > 30)
+                {
+                c.Enqueue(new ServerPackets.NewAccount { Result = 6 });
+                return;
+                }
+
+            lock (AccountLock)
+                {
+                if (AccountExists(p.AccountID))
+                    {
+                    c.Enqueue(new ServerPackets.NewAccount { Result = 7 });
+                    return;
+                    }
+
+                AccountList.Add(new AccountInfo(p) { Index = ++NextAccountID, CreationIP = c.IPAddress });
+
+                string sqlAccount = "INSERT INTO  " + Settings.DBAccount + ".account (IndexID, AccountID, Password, UserName, BirthDate, SecretQuestion, SecretAnswer, EMailAddress, CreationIP, CreationDate) VALUES ('" + NextAccountID + "', '" + p.AccountID + "', '" + p.Password + "', '" + p.UserName + "', '" + p.BirthDate + "', '" + p.SecretQuestion + "', '" + p.SecretAnswer + "', '" + p.EMailAddress + "', '" + c.IPAddress + "', '" + SMain.Envir.Now + "')";
+
+                ConnectADB.Insert(sqlAccount);
+
+                string sqlNextAccountID = "UPDATE " + Settings.DBAccount + ".generalcount SET NextAccountID = '" + NextAccountID + "' WHERE IndexID = '1'";
+
+                ConnectADB.Update(sqlNextAccountID);
+
+                c.Enqueue(new ServerPackets.NewAccount { Result = 8 });
+                }
             }
+        public void ChangePassword(ClientPackets.ChangePassword p, MirConnection c)
+            {
+            if (!Settings.AllowChangePassword)
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 0 });
+                return;
+                }
 
             if (!AccountIDReg.IsMatch(p.AccountID))
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 1});
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 1 });
                 return;
-            }
+                }
 
             if (!PasswordReg.IsMatch(p.CurrentPassword))
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 2});
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 2 });
                 return;
-            }
+                }
 
             if (!PasswordReg.IsMatch(p.NewPassword))
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 3});
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 3 });
                 return;
-            }
+                }
 
             AccountInfo account = GetAccount(p.AccountID);
 
             if (account == null)
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 4});
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 4 });
                 return;
-            }
+                }
 
             if (account.Banned)
-            {
-                if (account.ExpiryDate > Now)
                 {
-                    c.Enqueue(new ServerPackets.ChangePasswordBanned {Reason = account.BanReason, ExpiryDate = account.ExpiryDate});
+                if (account.ExpiryDate > Now)
+                    {
+                    c.Enqueue(new ServerPackets.ChangePasswordBanned { Reason = account.BanReason, ExpiryDate = account.ExpiryDate });
                     return;
-                }
+                    }
                 account.Banned = false;
-            }
+                }
             account.BanReason = string.Empty;
             account.ExpiryDate = DateTime.MinValue;
 
             if (String.CompareOrdinal(account.Password, p.CurrentPassword) != 0)
-            {
-                c.Enqueue(new ServerPackets.ChangePassword {Result = 5});
+                {
+                c.Enqueue(new ServerPackets.ChangePassword { Result = 5 });
                 return;
-            }
+                }
+
+            var sqlPassword = "UPDATE " + Settings.DBAccount + ".account SET Password = '" + p.NewPassword + "' WHERE IndexID = '" + account.Index + "'";
+
+            ConnectADB.Update(sqlPassword);
 
             account.Password = p.NewPassword;
-            c.Enqueue(new ServerPackets.ChangePassword {Result = 6});
-        }
+            c.Enqueue(new ServerPackets.ChangePassword { Result = 6 });
+            }
         public void Login(ClientPackets.Login p, MirConnection c)
-        {
-            if (!Settings.AllowLogin)
             {
+            if (!Settings.AllowLogin)
+                {
                 c.Enqueue(new ServerPackets.Login { Result = 0 });
                 return;
-            }
+                }
 
             if (!AccountIDReg.IsMatch(p.AccountID))
-            {
+                {
                 c.Enqueue(new ServerPackets.Login { Result = 1 });
                 return;
-            }
+                }
 
             if (!PasswordReg.IsMatch(p.Password))
-            {
+                {
                 c.Enqueue(new ServerPackets.Login { Result = 2 });
                 return;
-            }
-            AccountInfo account = GetAccount(p.AccountID);
+                }
+
+            account = GetAccount(p.AccountID);
+
 
             if (account == null)
-            {
+                {
+
+                try
+                    {
+
+                    MySqlConnection connection = new MySqlConnection(); //star conection 
+                    String connectionString;
+                    connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                    connection.ConnectionString = connectionString;
+                    connection.Open();
+
+                    MySqlCommand instruccion = connection.CreateCommand();
+
+                    instruccion.CommandText = "SELECT * FROM " + Settings.DBAccount + ".account Where AccountID = '" + p.AccountID + "'";
+
+                    MySqlDataReader readerAccountListDB = instruccion.ExecuteReader();
+
+                    while (readerAccountListDB.Read())
+                        {
+
+                        account = new AccountInfo(readerAccountListDB);
+                        //AccountList.Add(account);
+
+                        }
+
+                    if (account == null)
+                        {
+                        c.Enqueue(new ServerPackets.Login { Result = 3 });
+                        return;
+                        }
+
+                    readerAccountListDB.Dispose();
+
+                    MySqlCommand instruccionChar = connection.CreateCommand();
+
+                    instruccionChar.CommandText = "SELECT * FROM " + Settings.DBAccount + ".characterinfo Where AccountIndex = '" + account.Index + "'";
+
+                    MySqlDataReader readerCharactersListDB = instruccionChar.ExecuteReader();
+
+                    while (readerCharactersListDB.Read())
+                        {
+                        account.Characters.Add(new CharacterInfo(readerCharactersListDB));
+                        }
+
+
+                    readerCharactersListDB.Dispose();
+
+                    connection.Close();
+
+
+
+
+                    for (int i = 0; i < account.Characters.Count; i++)
+
+                        {
+                        account.Characters[i].AccountInfo = account;
+                        CharacterList.Add(account.Characters[i]);
+                        }
+
+                    AccountList.Add(account);
+                    }
+
+                catch (MySqlException ex)
+                    {
+                    SMain.Enqueue(ex);
+                    }
+
+                }
+
+
+            if (account == null)
+                {
                 c.Enqueue(new ServerPackets.Login { Result = 3 });
                 return;
-            }
+                }
 
             if (account.Banned)
-            {
-                if (account.ExpiryDate > DateTime.Now)
                 {
-                    c.Enqueue(new ServerPackets.LoginBanned
+                if (account.ExpiryDate > DateTime.Now)
                     {
+                    c.Enqueue(new ServerPackets.LoginBanned
+                        {
                         Reason = account.BanReason,
                         ExpiryDate = account.ExpiryDate
-                    });
+                        });
                     return;
-                }
+                    }
                 account.Banned = false;
-            }
-                account.BanReason = string.Empty;
-                account.ExpiryDate = DateTime.MinValue;
+                }
+            account.BanReason = string.Empty;
+            account.ExpiryDate = DateTime.MinValue;
 
 
             if (String.CompareOrdinal(account.Password, p.Password) != 0)
-            {
-                if (account.WrongPasswordCount++ >= 5)
                 {
+                if (account.WrongPasswordCount++ >= 5)
+                    {
                     account.Banned = true;
                     account.BanReason = "Too many Wrong Login Attempts.";
                     account.ExpiryDate = DateTime.Now.AddMinutes(2);
 
                     c.Enqueue(new ServerPackets.LoginBanned
-                    {
+                        {
                         Reason = account.BanReason,
                         ExpiryDate = account.ExpiryDate
-                    });
+                        });
                     return;
-                }
+                    }
 
                 c.Enqueue(new ServerPackets.Login { Result = 4 });
                 return;
-            }
+                }
             account.WrongPasswordCount = 0;
 
             lock (AccountLock)
-            {
+                {
                 if (account.Connection != null)
                     account.Connection.SendDisconnect(1);
 
                 account.Connection = c;
-            }
+                }
 
             c.Account = account;
             c.Stage = GameStage.Select;
@@ -2282,247 +3589,356 @@ namespace Server.MirEnvir
             account.LastDate = Now;
             account.LastIP = c.IPAddress;
 
+            DateTime theDate = Now;
+
+            string sqlAccountLast = "UPDATE " + Settings.DBAccount + ".account SET LastDate = '" + theDate.ToString("yyyy-MM-dd H:mm:ss") + "', LastIP = '" + c.IPAddress + "'  WHERE IndexID = '" + account.Index + "'";
+
+            ConnectADB.Update(sqlAccountLast);
+
+
             SMain.Enqueue(account.Connection.SessionID + ", " + account.Connection.IPAddress + ", User logged in.");
+
             c.Enqueue(new ServerPackets.LoginSuccess { Characters = account.GetSelectInfo() });
-        }
-        public void NewCharacter(ClientPackets.NewCharacter p, MirConnection c, bool IsGm)
-        {
-            if (!Settings.AllowNewCharacter)
-            {
-                c.Enqueue(new ServerPackets.NewCharacter {Result = 0});
-                return;
             }
+
+        public void NewCharacter(ClientPackets.NewCharacter p, MirConnection c, bool IsGm)
+            {
+            if (!Settings.AllowNewCharacter)
+                {
+                c.Enqueue(new ServerPackets.NewCharacter { Result = 0 });
+                return;
+                }
 
             if (!CharacterReg.IsMatch(p.Name))
-            {
-                c.Enqueue(new ServerPackets.NewCharacter {Result = 1});
-                return;
-            }
-
-            if ((!IsGm) && (DisabledCharNames.Contains(p.Name.ToUpper())))
-            {
+                {
                 c.Enqueue(new ServerPackets.NewCharacter { Result = 1 });
                 return;
-            }
+                }
+
+            if ((!IsGm) && (DisabledCharNames.Contains(p.Name.ToUpper())))
+                {
+                c.Enqueue(new ServerPackets.NewCharacter { Result = 1 });
+                return;
+                }
 
             if (p.Gender != MirGender.Male && p.Gender != MirGender.Female)
-            {
-                c.Enqueue(new ServerPackets.NewCharacter {Result = 2});
+                {
+                c.Enqueue(new ServerPackets.NewCharacter { Result = 2 });
                 return;
-            }
+                }
 
             if (p.Class != MirClass.Warrior && p.Class != MirClass.Wizard && p.Class != MirClass.Taoist &&
                 p.Class != MirClass.Assassin && p.Class != MirClass.Archer)
-            {
-                c.Enqueue(new ServerPackets.NewCharacter {Result = 3});
-                return;
-            }
-
-            if((p.Class == MirClass.Assassin && !Settings.AllowCreateAssassin) ||
-                (p.Class == MirClass.Archer && !Settings.AllowCreateArcher))
-            {
+                {
                 c.Enqueue(new ServerPackets.NewCharacter { Result = 3 });
                 return;
-            }
+                }
+
+            if ((p.Class == MirClass.Assassin && !Settings.AllowCreateAssassin) ||
+                (p.Class == MirClass.Archer && !Settings.AllowCreateArcher))
+                {
+                c.Enqueue(new ServerPackets.NewCharacter { Result = 3 });
+                return;
+                }
 
             int count = 0;
 
             for (int i = 0; i < c.Account.Characters.Count; i++)
-            {
+                {
                 if (c.Account.Characters[i].Deleted) continue;
 
                 if (++count >= Globals.MaxCharacterCount)
-                {
-                    c.Enqueue(new ServerPackets.NewCharacter {Result = 4});
+                    {
+                    c.Enqueue(new ServerPackets.NewCharacter { Result = 4 });
                     return;
+                    }
                 }
-            }
 
             lock (AccountLock)
-            {
-                if (CharacterExists(p.Name))
                 {
-                    c.Enqueue(new ServerPackets.NewCharacter {Result = 5});
+                if (CharacterExists(p.Name))
+                    {
+                    c.Enqueue(new ServerPackets.NewCharacter { Result = 5 });
                     return;
-                }
+                    }
 
                 CharacterInfo info = new CharacterInfo(p, c) { Index = ++NextCharacterID, AccountInfo = c.Account };
 
                 c.Account.Characters.Add(info);
-                CharacterList.Add(info);
+                //CharacterList.Add(info);
 
-                c.Enqueue(new ServerPackets.NewCharacterSuccess {CharInfo = info.ToSelectInfo()});
+                int IdGender = Convert.ToInt32(info.Gender);
+                int IdClass = Convert.ToInt32(info.Class);
+                DateTime theDate = info.CreationDate;
+
+                string sqlNewCharacters = "INSERT INTO  " + Settings.DBAccount + ".characterinfo (IndexID, AccountID, AccountIndex, Name, Class, Gender, CreationIP, CreationDate) VALUES ('" + info.Index + "', '" + info.AccountInfo.AccountID + "', '" + info.AccountInfo.Index + "', '" + info.Name + "', '" + IdClass + "', '" + IdGender + "', '" + info.CreationIP + "', '" + theDate.ToString("yyyy-MM-dd H:mm:ss") + "')";
+
+                ConnectADB.Insert(sqlNewCharacters);
+
+                string sqlNextCharacterID = "UPDATE " + Settings.DBAccount + ".generalcount SET NextCharacterID = '" + NextCharacterID + "' WHERE IndexID = '1'";
+
+                ConnectADB.Update(sqlNextCharacterID);
+
+                c.Enqueue(new ServerPackets.NewCharacterSuccess { CharInfo = info.ToSelectInfo() });
+                }
             }
-        }
 
         public bool AccountExists(string accountID)
-        {
-                for (int i = 0; i < AccountList.Count; i++)
-                    if (String.Compare(AccountList[i].AccountID, accountID, StringComparison.OrdinalIgnoreCase) == 0)
-                        return true;
+            {
+            string sqlAccountExists = "SELECT Count(*) FROM " + Settings.DBAccount + ".account where AccountID = '" + accountID + "'";
 
-                return false;
-        }
-        public bool CharacterExists(string name)
-        {
-            for (int i = 0; i < CharacterList.Count; i++)
-                if (String.Compare(CharacterList[i].Name, name, StringComparison.OrdinalIgnoreCase) == 0)
-                    return true;
+            if (ConnectADB.Count(sqlAccountExists) > 0)
+                return true;
+
+            // for (int i = 0; i < AccountList.Count; i++)
+            //        if (String.Compare(AccountList[i].AccountID, accountID, //StringComparison.OrdinalIgnoreCase) == 0)
+            //            return true;
 
             return false;
-        }
+            }
+        public bool CharacterExists(string name)
+            {
+            string sqlCharacterExists = "SELECT Count(*) FROM " + Settings.DBAccount + ".characterinfo where Name = '" + name + "'";
+
+            if (ConnectADB.Count(sqlCharacterExists) > 0)
+                return true;
+
+            // for (int i = 0; i < CharacterList.Count; i++)
+            //   if (String.Compare(CharacterList[i].Name, name, StringComparison.OrdinalIgnoreCase) == 0)
+            //       return true;
+
+            return false;
+            }
 
         private AccountInfo GetAccount(string accountID)
-        {
-                for (int i = 0; i < AccountList.Count; i++)
-                    if (String.Compare(AccountList[i].AccountID, accountID, StringComparison.OrdinalIgnoreCase) == 0)
-                        return AccountList[i];
+            {
+            for (int i = 0; i < AccountList.Count; i++)
+                if (String.Compare(AccountList[i].AccountID, accountID, StringComparison.OrdinalIgnoreCase) == 0)
+                    return AccountList[i];
 
-                return null;
-        }
+            return null;
+            }
+
+        public void RemoveAccountList(int accountID)
+            {
+
+            for (int i = 0; i < AccountList.Count; i++)
+                {
+                if (AccountList[i].Index == accountID)
+                    {
+                    AccountList.RemoveAt(i);
+                    break;
+                    }
+                }
+            }
+
+        public void RemoveCharterList(int charterID)
+            {
+            for (int i = 0; i < CharacterList.Count; i++)
+                {
+                if (CharacterList[i].Index == charterID)
+                    {
+                    CharacterList.RemoveAt(i);
+                    break;
+                    }
+                }
+
+            }
+
         public List<AccountInfo> MatchAccounts(string accountID, bool match = false)
-        {
+            {
             if (string.IsNullOrEmpty(accountID)) return new List<AccountInfo>(AccountList);
 
             List<AccountInfo> list = new List<AccountInfo>();
 
             for (int i = 0; i < AccountList.Count; i++)
-            {
-                if (match)
                 {
+                if (match)
+                    {
                     if (AccountList[i].AccountID.Equals(accountID, StringComparison.OrdinalIgnoreCase))
                         list.Add(AccountList[i]);
-                }
+                    }
                 else
-                {
+                    {
                     if (AccountList[i].AccountID.IndexOf(accountID, StringComparison.OrdinalIgnoreCase) >= 0)
                         list.Add(AccountList[i]);
+                    }
                 }
-            }
 
             return list;
-        }
+            }
+        public List<ItemInfo> MatchItems(string ItemsID, bool match = false)
+            {
+            if (string.IsNullOrEmpty(ItemsID)) return new List<ItemInfo>(ItemInfoList);
 
+            List<ItemInfo> list = new List<ItemInfo>();
+
+            for (int i = 0; i < AccountList.Count; i++)
+                {
+                if (match)
+                    {
+                    if (AccountList[i].AccountID.Equals(ItemsID, StringComparison.OrdinalIgnoreCase))
+                        list.Add(ItemInfoList[i]);
+                    }
+                else
+                    {
+                    if (AccountList[i].AccountID.IndexOf(ItemsID, StringComparison.OrdinalIgnoreCase) >= 0)
+                        list.Add(ItemInfoList[i]);
+                    }
+                }
+
+            return list;
+            }
         public List<AccountInfo> MatchAccountsByPlayer(string playerName, bool match = false)
-        {
+            {
             if (string.IsNullOrEmpty(playerName)) return new List<AccountInfo>(AccountList);
 
             List<AccountInfo> list = new List<AccountInfo>();
 
             for (int i = 0; i < AccountList.Count; i++)
-            {
-                for (int j = 0; j < AccountList[i].Characters.Count; j++)
                 {
-                    if (match)
+                for (int j = 0; j < AccountList[i].Characters.Count; j++)
                     {
+                    if (match)
+                        {
                         if (AccountList[i].Characters[j].Name.Equals(playerName, StringComparison.OrdinalIgnoreCase))
                             list.Add(AccountList[i]);
-                    }
+                        }
                     else
-                    {
+                        {
                         if (AccountList[i].Characters[j].Name.IndexOf(playerName, StringComparison.OrdinalIgnoreCase) >= 0)
                             list.Add(AccountList[i]);
+                        }
                     }
                 }
-            }
 
             return list;
-        }
+            }
 
         public void CreateAccountInfo()
-        {
-            AccountList.Add(new AccountInfo {Index = ++NextAccountID});
-        }
+            {
+            AccountList.Add(new AccountInfo { Index = ++NextAccountID });
+
+            var sqlAccount = "INSERT INTO  " + Settings.DBAccount + ".account (IndexID) VALUES ('" + NextAccountID + "')";
+
+            ConnectADB.Insert(sqlAccount);
+
+            string sqlNextAccountID = "UPDATE " + Settings.DBAccount + ".generalcount SET NextAccountID = '" + NextAccountID + "' WHERE IndexID = '1'";
+
+            ConnectADB.Update(sqlNextAccountID);
+
+            }
         public void CreateMapInfo()
-        {
-            MapInfoList.Add(new MapInfo {Index = ++MapIndex});
-        }
+            {
+            MapInfoList.Add(new MapInfo { Index = ++MapIndex });
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET MapIndex = '" + MapIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
         public void CreateItemInfo(ItemType type = ItemType.Nothing)
-        {
-            ItemInfoList.Add(new ItemInfo { Index = ++ItemIndex, Type = type, RandomStatsId = 255});
-        }
+            {
+            ItemInfoList.Add(new ItemInfo { Index = ++ItemIndex, Type = type, RandomStatsId = 255 });
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET ItemIndex = '" + ItemIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
         public void CreateMonsterInfo()
-        {
-            MonsterInfoList.Add(new MonsterInfo {Index = ++MonsterIndex});
-        }
+            {
+            MonsterInfoList.Add(new MonsterInfo { Index = ++MonsterIndex });
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET MonsterIndex = '" + MonsterIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
         public void CreateNPCInfo()
-        {
+            {
             NPCInfoList.Add(new NPCInfo { Index = ++NPCIndex });
-        }
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET NPCIndex = '" + NPCIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
+
         public void CreateQuestInfo()
-        {
+            {
             QuestInfoList.Add(new QuestInfo { Index = ++QuestIndex });
-        }
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET QuestIndex = '" + QuestIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
 
         public void AddToGameShop(ItemInfo Info)
-        {
+            {
             GameShopList.Add(new GameShopItem { GIndex = ++GameshopIndex, GoldPrice = (uint)(1000 * Settings.CredxGold), CreditPrice = 1000, ItemIndex = Info.Index, Info = Info, Date = DateTime.Now, Class = "All", Category = Info.Type.ToString() });
-        }
+            SaveGameShop(new GameShopItem { GIndex = GameshopIndex, GoldPrice = (uint)(1000 * Settings.CredxGold), CreditPrice = 1000, ItemIndex = Info.Index, Info = Info, Date = DateTime.Now, Class = "All", Category = Info.Type.ToString() });
+
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET GameshopIndex = '" + GameshopIndex + "'  WHERE IndexID = '1'";
+            ConnectADB.Update(Update);
+            }
 
         public void Remove(MapInfo info)
-        {
+            {
             MapInfoList.Remove(info);
             //Desync all objects\
-        }
+            }
         public void Remove(ItemInfo info)
-        {
+            {
             ItemInfoList.Remove(info);
-        }
+            }
         public void Remove(MonsterInfo info)
-        {
+            {
             MonsterInfoList.Remove(info);
             //Desync all objects\
-        }
+            }
         public void Remove(NPCInfo info)
-        {
+            {
             NPCInfoList.Remove(info);
             //Desync all objects\
-        }
+            }
         public void Remove(QuestInfo info)
-        {
+            {
             QuestInfoList.Remove(info);
             //Desync all objects\
-        }
+            }
 
         public void Remove(GameShopItem info)
-        {
+            {
             GameShopList.Remove(info);
 
             if (GameShopList.Count == 0)
-            {
+                {
                 GameshopIndex = 0;
-            }
-                
+                }
+
             //Desync all objects\
-        }
+            }
 
         public UserItem CreateFreshItem(ItemInfo info)
-        {
+            {
             UserItem item = new UserItem(info)
                 {
-                    UniqueID = ++NextUserItemID,
-                    CurrentDura = info.Durability,
-                    MaxDura = info.Durability
+                UniqueID = ++NextUserItemID,
+                CurrentDura = info.Durability,
+                MaxDura = info.Durability
                 };
+
+            string sqlNextUserItemID = "UPDATE " + Settings.DBAccount + ".generalcount SET NextUserItemID = '" + NextUserItemID + "' WHERE IndexID = '1'";
+            ConnectADB.Update(sqlNextUserItemID);
 
             UpdateItemExpiry(item);
 
             return item;
-        }
+            }
         public UserItem CreateDropItem(int index)
-        {
+            {
             return CreateDropItem(GetItemInfo(index));
-        }
+            }
         public UserItem CreateDropItem(ItemInfo info)
-        {
+            {
             if (info == null) return null;
 
             UserItem item = new UserItem(info)
                 {
-                    UniqueID = ++NextUserItemID,
-                    MaxDura = info.Durability,
-                    CurrentDura = (ushort) Math.Min(info.Durability, Random.Next(info.Durability) + 1000)
+                UniqueID = ++NextUserItemID,
+                MaxDura = info.Durability,
+                CurrentDura = (ushort)Math.Min(info.Durability, Random.Next(info.Durability) + 1000)
                 };
+
+            string sqlNextUserItemID = "UPDATE " + Settings.DBAccount + ".generalcount SET NextUserItemID = '" + NextUserItemID + "' WHERE IndexID = '1'";
+            ConnectADB.Update(sqlNextUserItemID);
 
             UpgradeItem(item);
 
@@ -2530,13 +3946,14 @@ namespace Server.MirEnvir
 
             if (!info.NeedIdentify) item.Identified = true;
             return item;
-        }
+            }
 
         public void UpdateItemExpiry(UserItem item)
-        {
+            {
             //can't have expiry on usable items
-            if (item.Info.Type == ItemType.Scroll || item.Info.Type == ItemType.Potion || 
-                item.Info.Type == ItemType.Transform || item.Info.Type == ItemType.Script) return;
+            if (item.Info.Type == ItemType.Scroll || item.Info.Type == ItemType.Potion ||
+                item.Info.Type == ItemType.Transform || item.Info.Type == ItemType.Script)
+                return;
 
             ExpireInfo expiryInfo = new ExpireInfo();
 
@@ -2544,7 +3961,7 @@ namespace Server.MirEnvir
             Match expiryMatch = r.Match(item.Info.Name);
 
             if (expiryMatch.Success)
-            {
+                {
                 string parameter = expiryMatch.Groups[1].Captures[0].Value;
 
                 var numAlpha = new Regex("(?<Numeric>[0-9]*)(?<Alpha>[a-zA-Z]*)");
@@ -2556,7 +3973,7 @@ namespace Server.MirEnvir
                 int.TryParse(match.Groups["Numeric"].Value, out num);
 
                 switch (alpha)
-                {
+                    {
                     case "m":
                         expiryInfo.ExpiryDate = DateTime.Now.AddMinutes(num);
                         break;
@@ -2575,136 +3992,136 @@ namespace Server.MirEnvir
                     default:
                         expiryInfo.ExpiryDate = DateTime.MaxValue;
                         break;
-                }
+                    }
 
                 item.ExpireInfo = expiryInfo;
+                }
             }
-        }
 
         public void UpgradeItem(UserItem item)
-        {
+            {
             if (item.Info.RandomStats == null) return;
             RandomItemStat stat = item.Info.RandomStats;
             if ((stat.MaxDuraChance > 0) && (Random.Next(stat.MaxDuraChance) == 0))
-            {
+                {
                 int dura = RandomomRange(stat.MaxDuraMaxStat, stat.MaxDuraStatChance);
                 item.MaxDura = (ushort)Math.Min(ushort.MaxValue, item.MaxDura + dura * 1000);
                 item.CurrentDura = (ushort)Math.Min(ushort.MaxValue, item.CurrentDura + dura * 1000);
+                }
+
+            if ((stat.MaxAcChance > 0) && (Random.Next(stat.MaxAcChance) == 0)) item.AC = (byte)(RandomomRange(stat.MaxAcMaxStat - 1, stat.MaxAcStatChance) + 1);
+            if ((stat.MaxMacChance > 0) && (Random.Next(stat.MaxMacChance) == 0)) item.MAC = (byte)(RandomomRange(stat.MaxMacMaxStat - 1, stat.MaxMacStatChance) + 1);
+            if ((stat.MaxDcChance > 0) && (Random.Next(stat.MaxDcChance) == 0)) item.DC = (byte)(RandomomRange(stat.MaxDcMaxStat - 1, stat.MaxDcStatChance) + 1);
+            if ((stat.MaxMcChance > 0) && (Random.Next(stat.MaxScChance) == 0)) item.MC = (byte)(RandomomRange(stat.MaxMcMaxStat - 1, stat.MaxMcStatChance) + 1);
+            if ((stat.MaxScChance > 0) && (Random.Next(stat.MaxMcChance) == 0)) item.SC = (byte)(RandomomRange(stat.MaxScMaxStat - 1, stat.MaxScStatChance) + 1);
+            if ((stat.AccuracyChance > 0) && (Random.Next(stat.AccuracyChance) == 0)) item.Accuracy = (byte)(RandomomRange(stat.AccuracyMaxStat - 1, stat.AccuracyStatChance) + 1);
+            if ((stat.AgilityChance > 0) && (Random.Next(stat.AgilityChance) == 0)) item.Agility = (byte)(RandomomRange(stat.AgilityMaxStat - 1, stat.AgilityStatChance) + 1);
+            if ((stat.HpChance > 0) && (Random.Next(stat.HpChance) == 0)) item.HP = (byte)(RandomomRange(stat.HpMaxStat - 1, stat.HpStatChance) + 1);
+            if ((stat.MpChance > 0) && (Random.Next(stat.MpChance) == 0)) item.MP = (byte)(RandomomRange(stat.MpMaxStat - 1, stat.MpStatChance) + 1);
+            if ((stat.StrongChance > 0) && (Random.Next(stat.StrongChance) == 0)) item.Strong = (byte)(RandomomRange(stat.StrongMaxStat - 1, stat.StrongStatChance) + 1);
+            if ((stat.MagicResistChance > 0) && (Random.Next(stat.MagicResistChance) == 0)) item.MagicResist = (byte)(RandomomRange(stat.MagicResistMaxStat - 1, stat.MagicResistStatChance) + 1);
+            if ((stat.PoisonResistChance > 0) && (Random.Next(stat.PoisonResistChance) == 0)) item.PoisonResist = (byte)(RandomomRange(stat.PoisonResistMaxStat - 1, stat.PoisonResistStatChance) + 1);
+            if ((stat.HpRecovChance > 0) && (Random.Next(stat.HpRecovChance) == 0)) item.HealthRecovery = (byte)(RandomomRange(stat.HpRecovMaxStat - 1, stat.HpRecovStatChance) + 1);
+            if ((stat.MpRecovChance > 0) && (Random.Next(stat.MpRecovChance) == 0)) item.ManaRecovery = (byte)(RandomomRange(stat.MpRecovMaxStat - 1, stat.MpRecovStatChance) + 1);
+            if ((stat.PoisonRecovChance > 0) && (Random.Next(stat.PoisonRecovChance) == 0)) item.PoisonRecovery = (byte)(RandomomRange(stat.PoisonRecovMaxStat - 1, stat.PoisonRecovStatChance) + 1);
+            if ((stat.CriticalRateChance > 0) && (Random.Next(stat.CriticalRateChance) == 0)) item.CriticalRate = (byte)(RandomomRange(stat.CriticalRateMaxStat - 1, stat.CriticalRateStatChance) + 1);
+            if ((stat.CriticalDamageChance > 0) && (Random.Next(stat.CriticalDamageChance) == 0)) item.CriticalDamage = (byte)(RandomomRange(stat.CriticalDamageMaxStat - 1, stat.CriticalDamageStatChance) + 1);
+            if ((stat.FreezeChance > 0) && (Random.Next(stat.FreezeChance) == 0)) item.Freezing = (byte)(RandomomRange(stat.FreezeMaxStat - 1, stat.FreezeStatChance) + 1);
+            if ((stat.PoisonAttackChance > 0) && (Random.Next(stat.PoisonAttackChance) == 0)) item.PoisonAttack = (byte)(RandomomRange(stat.PoisonAttackMaxStat - 1, stat.PoisonAttackStatChance) + 1);
+            if ((stat.AttackSpeedChance > 0) && (Random.Next(stat.AttackSpeedChance) == 0)) item.AttackSpeed = (sbyte)(RandomomRange(stat.AttackSpeedMaxStat - 1, stat.AttackSpeedStatChance) + 1);
+            if ((stat.LuckChance > 0) && (Random.Next(stat.LuckChance) == 0)) item.Luck = (sbyte)(RandomomRange(stat.LuckMaxStat - 1, stat.LuckStatChance) + 1);
+            if ((stat.CurseChance > 0) && (Random.Next(100) <= stat.CurseChance)) item.Cursed = true;
             }
 
-            if ((stat.MaxAcChance > 0) && (Random.Next(stat.MaxAcChance) == 0)) item.AC = (byte)(RandomomRange(stat.MaxAcMaxStat-1, stat.MaxAcStatChance)+1);
-            if ((stat.MaxMacChance > 0) && (Random.Next(stat.MaxMacChance) == 0)) item.MAC = (byte)(RandomomRange(stat.MaxMacMaxStat-1, stat.MaxMacStatChance)+1);
-            if ((stat.MaxDcChance > 0) && (Random.Next(stat.MaxDcChance) == 0)) item.DC = (byte)(RandomomRange(stat.MaxDcMaxStat-1, stat.MaxDcStatChance)+1);
-            if ((stat.MaxMcChance > 0) && (Random.Next(stat.MaxScChance) == 0)) item.MC = (byte)(RandomomRange(stat.MaxMcMaxStat-1, stat.MaxMcStatChance)+1);
-            if ((stat.MaxScChance > 0) && (Random.Next(stat.MaxMcChance) == 0)) item.SC = (byte)(RandomomRange(stat.MaxScMaxStat-1, stat.MaxScStatChance)+1);
-            if ((stat.AccuracyChance > 0) && (Random.Next(stat.AccuracyChance) == 0)) item.Accuracy = (byte)(RandomomRange(stat.AccuracyMaxStat-1, stat.AccuracyStatChance)+1);
-            if ((stat.AgilityChance > 0) && (Random.Next(stat.AgilityChance) == 0)) item.Agility = (byte)(RandomomRange(stat.AgilityMaxStat-1, stat.AgilityStatChance)+1);
-            if ((stat.HpChance > 0) && (Random.Next(stat.HpChance) == 0)) item.HP = (byte)(RandomomRange(stat.HpMaxStat-1, stat.HpStatChance)+1);
-            if ((stat.MpChance > 0) && (Random.Next(stat.MpChance) == 0)) item.MP = (byte)(RandomomRange(stat.MpMaxStat-1, stat.MpStatChance)+1);
-            if ((stat.StrongChance > 0) && (Random.Next(stat.StrongChance) == 0)) item.Strong = (byte)(RandomomRange(stat.StrongMaxStat-1, stat.StrongStatChance)+1);
-            if ((stat.MagicResistChance > 0) && (Random.Next(stat.MagicResistChance) == 0)) item.MagicResist = (byte)(RandomomRange(stat.MagicResistMaxStat-1, stat.MagicResistStatChance)+1);
-            if ((stat.PoisonResistChance > 0) && (Random.Next(stat.PoisonResistChance) == 0)) item.PoisonResist = (byte)(RandomomRange(stat.PoisonResistMaxStat-1, stat.PoisonResistStatChance)+1);
-            if ((stat.HpRecovChance > 0) && (Random.Next(stat.HpRecovChance) == 0)) item.HealthRecovery = (byte)(RandomomRange(stat.HpRecovMaxStat-1, stat.HpRecovStatChance)+1);
-            if ((stat.MpRecovChance > 0) && (Random.Next(stat.MpRecovChance) == 0)) item.ManaRecovery = (byte)(RandomomRange(stat.MpRecovMaxStat-1, stat.MpRecovStatChance)+1);
-            if ((stat.PoisonRecovChance > 0) && (Random.Next(stat.PoisonRecovChance) == 0)) item.PoisonRecovery = (byte)(RandomomRange(stat.PoisonRecovMaxStat-1, stat.PoisonRecovStatChance)+1);
-            if ((stat.CriticalRateChance > 0) && (Random.Next(stat.CriticalRateChance) == 0)) item.CriticalRate = (byte)(RandomomRange(stat.CriticalRateMaxStat-1, stat.CriticalRateStatChance)+1);
-            if ((stat.CriticalDamageChance > 0) && (Random.Next(stat.CriticalDamageChance) == 0)) item.CriticalDamage = (byte)(RandomomRange(stat.CriticalDamageMaxStat-1, stat.CriticalDamageStatChance)+1);
-            if ((stat.FreezeChance > 0) && (Random.Next(stat.FreezeChance) == 0)) item.Freezing = (byte)(RandomomRange(stat.FreezeMaxStat-1, stat.FreezeStatChance)+1);
-            if ((stat.PoisonAttackChance > 0) && (Random.Next(stat.PoisonAttackChance) == 0)) item.PoisonAttack = (byte)(RandomomRange(stat.PoisonAttackMaxStat-1, stat.PoisonAttackStatChance)+1);
-            if ((stat.AttackSpeedChance > 0) && (Random.Next(stat.AttackSpeedChance) == 0)) item.AttackSpeed = (sbyte)(RandomomRange(stat.AttackSpeedMaxStat-1, stat.AttackSpeedStatChance)+1);
-            if ((stat.LuckChance > 0) && (Random.Next(stat.LuckChance) == 0)) item.Luck = (sbyte)(RandomomRange(stat.LuckMaxStat-1, stat.LuckStatChance)+1);
-            if ((stat.CurseChance > 0) && (Random.Next(100) <= stat.CurseChance)) item.Cursed = true;
-        }
-
         public int RandomomRange(int count, int rate)
-        {
+            {
             int x = 0;
             for (int i = 0; i < count; i++) if (Random.Next(rate) == 0) x++;
             return x;
-        }
+            }
         public bool BindItem(UserItem item)
-        {
-            for (int i = 0; i < ItemInfoList.Count; i++)
             {
+            for (int i = 0; i < ItemInfoList.Count; i++)
+                {
                 ItemInfo info = ItemInfoList[i];
                 if (info.Index != item.ItemIndex) continue;
                 item.Info = info;
 
                 return BindSlotItems(item);
-            }
+                }
             return false;
-        }
+            }
 
         public bool BindGameShop(GameShopItem item, bool EditEnvir = true)
-        {
-            for (int i = 0; i < SMain.EditEnvir.ItemInfoList.Count; i++)
             {
+            for (int i = 0; i < SMain.EditEnvir.ItemInfoList.Count; i++)
+                {
                 ItemInfo info = SMain.EditEnvir.ItemInfoList[i];
                 if (info.Index != item.ItemIndex) continue;
                 item.Info = info;
 
                 return true;
-            }
+                }
             return false;
-        }
+            }
 
         public bool BindSlotItems(UserItem item)
-        {           
-            for (int i = 0; i < item.Slots.Length; i++)
             {
+            for (int i = 0; i < item.Slots.Length; i++)
+                {
                 if (item.Slots[i] == null) continue;
 
                 if (!BindItem(item.Slots[i])) return false;
-            }
+                }
 
             item.SetSlotSize();
 
             return true;
-        }
+            }
 
         public bool BindQuest(QuestProgressInfo quest)
-        {
-            for (int i = 0; i < QuestInfoList.Count; i++)
             {
+            for (int i = 0; i < QuestInfoList.Count; i++)
+                {
                 QuestInfo info = QuestInfoList[i];
                 if (info.Index != quest.Index) continue;
                 quest.Info = info;
                 return true;
-            }
+                }
             return false;
-        }
+            }
 
         public Map GetMap(int index)
-        {
+            {
             return MapList.FirstOrDefault(t => t.Info.Index == index);
-        }
+            }
 
         public Map GetMapByNameAndInstance(string name, int instanceValue = 0)
-        {
+            {
             if (instanceValue < 0) instanceValue = 0;
             if (instanceValue > 0) instanceValue--;
 
             var instanceMapList = MapList.Where(t => String.Equals(t.Info.FileName, name, StringComparison.CurrentCultureIgnoreCase)).ToList();
             return instanceValue < instanceMapList.Count() ? instanceMapList[instanceValue] : null;
-        }
+            }
 
         public MapObject GetObject(uint objectID)
-        {
+            {
             return Objects.FirstOrDefault(e => e.ObjectID == objectID);
-        }
+            }
 
         public MonsterInfo GetMonsterInfo(int index)
-        {
+            {
             for (int i = 0; i < MonsterInfoList.Count; i++)
                 if (MonsterInfoList[i].Index == index) return MonsterInfoList[i];
 
             return null;
-        }
+            }
 
         public NPCObject GetNPC(string name)
-        {
+            {
             return MapList.SelectMany(t1 => t1.NPCs.Where(t => t.Info.Name == name)).FirstOrDefault();
-        }
+            }
         /*
         public MonsterInfo GetMonsterInfo(string name)
         {
@@ -2719,368 +4136,443 @@ namespace Server.MirEnvir
         }
         */
         public MonsterInfo GetMonsterInfo(string name, bool Strict = false)
-        {
-            for (int i = 0; i < MonsterInfoList.Count; i++)
             {
+            for (int i = 0; i < MonsterInfoList.Count; i++)
+                {
                 MonsterInfo info = MonsterInfoList[i];
                 if (Strict)
-                {
+                    {
                     if (info.Name != name) continue;
                     return info;
-                }
+                    }
                 else
-                {
+                    {
                     //if (info.Name != name && !info.Name.Replace(" ", "").StartsWith(name, StringComparison.OrdinalIgnoreCase)) continue;
                     if (String.Compare(info.Name, name, StringComparison.OrdinalIgnoreCase) != 0 && String.Compare(info.Name.Replace(" ", ""), name.Replace(" ", ""), StringComparison.OrdinalIgnoreCase) != 0) continue;
                     return info;
+                    }
                 }
-            }
             return null;
-        }
+            }
         public PlayerObject GetPlayer(string name)
-        {
+            {
             for (int i = 0; i < Players.Count; i++)
                 if (String.Compare(Players[i].Name, name, StringComparison.OrdinalIgnoreCase) == 0)
                     return Players[i];
 
             return null;
-        }
+            }
         public PlayerObject GetPlayer(uint PlayerId)
-        {
+            {
             for (int i = 0; i < Players.Count; i++)
                 if (Players[i].Info.Index == PlayerId)
                     return Players[i];
 
             return null;
-        }
+            }
         public CharacterInfo GetCharacterInfo(string name)
-        {
+            {
             for (int i = 0; i < CharacterList.Count; i++)
                 if (String.Compare(CharacterList[i].Name, name, StringComparison.OrdinalIgnoreCase) == 0)
                     return CharacterList[i];
 
             return null;
-        }
+            }
+        public CharacterInfo GetCharacterInfoDB(string name)
+
+            {
+            CheckCharacterList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                MySqlCommand instruccionChar = connection.CreateCommand();
+
+                instruccionChar.CommandText = "SELECT * FROM " + Settings.DBAccount + ".characterinfo Where Name = '" + name + "'";
+
+                MySqlDataReader readerCharactersListDB = instruccionChar.ExecuteReader();
+
+                while (readerCharactersListDB.Read())
+                    {
+                    CheckCharacterList.Add(new CharacterInfo(readerCharactersListDB));
+                    }
+                instruccionChar.Dispose();
+                connection.Close();
+                }
+
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+
+            if (CheckCharacterList.Count > 0)
+                return CheckCharacterList[0];
+
+            return null;
+
+            }
 
         public CharacterInfo GetCharacterInfo(int index)
-        {
+            {
             for (int i = 0; i < CharacterList.Count; i++)
                 if (CharacterList[i].Index == index)
                     return CharacterList[i];
 
             return null;
-        }
+            }
+
+        public CharacterInfo GetCharacterInfoDB(int index)
+
+            {
+            CheckCharacterList.Clear();
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                MySqlCommand instruccionChar = connection.CreateCommand();
+
+                instruccionChar.CommandText = "SELECT * FROM " + Settings.DBAccount + ".characterinfo Where IndexID = '" + index + "'";
+
+                MySqlDataReader readerCharactersListDB = instruccionChar.ExecuteReader();
+
+                while (readerCharactersListDB.Read())
+                    {
+                    CheckCharacterList.Add(new CharacterInfo(readerCharactersListDB));
+                    }
+                instruccionChar.Dispose();
+                connection.Close();
+                }
+
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            if (CheckCharacterList[0] != null)
+                return CheckCharacterList[0];
+
+            return null;
+            }
 
         public ItemInfo GetItemInfo(int index)
-        {
-            for (int i = 0; i < ItemInfoList.Count; i++)
             {
+            for (int i = 0; i < ItemInfoList.Count; i++)
+                {
                 ItemInfo info = ItemInfoList[i];
                 if (info.Index != index) continue;
                 return info;
-            }
+                }
             return null;
-        }
+            }
         public ItemInfo GetItemInfo(string name)
-        {
-            for (int i = 0; i < ItemInfoList.Count; i++)
             {
+            for (int i = 0; i < ItemInfoList.Count; i++)
+                {
                 ItemInfo info = ItemInfoList[i];
                 if (String.Compare(info.Name.Replace(" ", ""), name, StringComparison.OrdinalIgnoreCase) != 0) continue;
                 return info;
-            }
+                }
             return null;
-        }
+            }
         public QuestInfo GetQuestInfo(int index)
-        {
+            {
             return QuestInfoList.FirstOrDefault(info => info.Index == index);
-        }
+            }
 
         public ItemInfo GetBook(short Skill)
-        {
-            for (int i = 0; i < ItemInfoList.Count; i++)
             {
+            for (int i = 0; i < ItemInfoList.Count; i++)
+                {
                 ItemInfo info = ItemInfoList[i];
                 if ((info.Type != ItemType.Book) || (info.Shape != Skill)) continue;
                 return info;
-            }
+                }
             return null;
-        }
+            }
 
         public void MessageAccount(AccountInfo account, string message, ChatType type)
-        {
+            {
             if (account == null) return;
             if (account.Characters == null) return;
 
             for (int i = 0; i < account.Characters.Count; i++)
-            {
+                {
                 if (account.Characters[i].Player == null) continue;
                 account.Characters[i].Player.ReceiveChat(message, type);
                 return;
+                }
             }
-        }
         public GuildObject GetGuild(string name)
-        {
-            for (int i = 0; i < GuildList.Count; i++)
             {
+            for (int i = 0; i < GuildList.Count; i++)
+                {
                 if (String.Compare(GuildList[i].Name.Replace(" ", ""), name, StringComparison.OrdinalIgnoreCase) != 0) continue;
                 return GuildList[i];
-            }
+                }
             return null;
-        }
+            }
         public GuildObject GetGuild(int index)
-        {
+            {
             for (int i = 0; i < GuildList.Count; i++)
                 if (GuildList[i].Guildindex == index)
                     return GuildList[i];
             return null;
-        }
+            }
 
         public void ProcessNewDay()
-        {
-            foreach (CharacterInfo c in CharacterList)
             {
+            foreach (CharacterInfo c in CharacterList)
+                {
                 ClearDailyQuests(c);
 
                 c.NewDay = true;
 
-                if(c.Player != null)
-                {
+                if (c.Player != null)
+                    {
                     c.Player.CallDefaultNPC(DefaultNPCType.Daily);
+                    }
                 }
             }
-        }
 
         private void ClearDailyQuests(CharacterInfo info)
-        {
-            foreach (var quest in QuestInfoList)
             {
+            foreach (var quest in QuestInfoList)
+                {
                 if (quest.Type != QuestType.Daily) continue;
 
                 for (int i = 0; i < info.CompletedQuests.Count; i++)
-                {
+                    {
                     if (info.CompletedQuests[i] != quest.Index) continue;
 
                     info.CompletedQuests.RemoveAt(i);
-                } 
-            }
+                    }
+                }
 
             if (info.Player != null)
-            {
+                {
                 info.Player.GetCompletedQuests();
-            }       
-        }
+                }
+            }
 
         public GuildBuffInfo FindGuildBuffInfo(int Id)
-        {
+            {
             for (int i = 0; i < Settings.Guild_BuffList.Count; i++)
                 if (Settings.Guild_BuffList[i].Id == Id)
                     return Settings.Guild_BuffList[i];
             return null;
-        }
+            }
 
         public void ClearGameshopLog()
-        {
+            {
             SMain.Envir.GameshopLog.Clear();
 
             for (int i = 0; i < AccountList.Count; i++)
-            {
-                for (int f = 0; f < AccountList[i].Characters.Count; f++)
                 {
+                for (int f = 0; f < AccountList[i].Characters.Count; f++)
+                    {
                     AccountList[i].Characters[f].GSpurchases.Clear();
+                    }
                 }
-            }
+            string sqlDelete = "TRUNCATE TABLE " + Settings.DBAccount + ".gspurchases; TRUNCATE TABLE " + Settings.DBAccount + ".gameshoplog";
+
+            ConnectADB.Delete(sqlDelete);
 
             ResetGS = false;
             SMain.Enqueue("Gameshop Purchase Logs Cleared.");
-
-        }
+            }
 
         int RankCount = 100;//could make this a global but it made sence since this is only used here, it should stay here
         public int InsertRank(List<Rank_Character_Info> Ranking, Rank_Character_Info NewRank)
-        {
-            if (Ranking.Count == 0)
             {
+            if (Ranking.Count == 0)
+                {
                 Ranking.Add(NewRank);
                 return Ranking.Count;
-            }
-            for (int i = 0; i < Ranking.Count; i++)
-            {
-               //if level is lower
-               if (Ranking[i].level < NewRank.level)
-               {
-                    Ranking.Insert(i, NewRank);
-                    return i+1;
                 }
+            for (int i = 0; i < Ranking.Count; i++)
+                {
+                //if level is lower
+                if (Ranking[i].level < NewRank.level)
+                    {
+                    Ranking.Insert(i, NewRank);
+                    return i + 1;
+                    }
                 //if exp is lower but level = same
                 if ((Ranking[i].level == NewRank.level) && (Ranking[i].Experience < NewRank.Experience))
-                {
-                   Ranking.Insert(i, NewRank);
-                   return i+1;
+                    {
+                    Ranking.Insert(i, NewRank);
+                    return i + 1;
+                    }
                 }
-            }
             if (Ranking.Count < RankCount)
-            {
+                {
                 Ranking.Add(NewRank);
                 return Ranking.Count;
-            }
+                }
             return 0;
-        }
+            }
 
         public bool TryAddRank(List<Rank_Character_Info> Ranking, CharacterInfo info, byte type)
-        {
+            {
             Rank_Character_Info NewRank = new Rank_Character_Info() { Name = info.Name, Class = info.Class, Experience = info.Experience, level = info.Level, PlayerId = info.Index, info = info };
             int NewRankIndex = InsertRank(Ranking, NewRank);
             if (NewRankIndex == 0) return false;
-            for (int i = NewRankIndex; i < Ranking.Count; i++ )
-            {
+            for (int i = NewRankIndex; i < Ranking.Count; i++)
+                {
                 SetNewRank(Ranking[i], i + 1, type);
-            }
+                }
             info.Rank[type] = NewRankIndex;
             return true;
-        }
+            }
 
         public int FindRank(List<Rank_Character_Info> Ranking, CharacterInfo info, byte type)
-        {
+            {
             int startindex = info.Rank[type];
             if (startindex > 0) //if there's a previously known rank then the user can only have gone down in the ranking (or stayed the same)
-            {
-                for (int i = startindex-1; i < Ranking.Count; i++)
                 {
+                for (int i = startindex - 1; i < Ranking.Count; i++)
+                    {
                     if (Ranking[i].Name == info.Name)
                         return i;
-                }
+                    }
                 info.Rank[type] = 0;//set the rank to 0 to tell future searches it's not there anymore
-            }
+                }
             else //if there's no previously known ranking then technicaly it shouldnt be listed, but check anyway?
-            {
+                {
                 //currently not used so not coded it < if there's a reason to, easy to add :p
-            }
+                }
             return -1;//index can be 0
-        }
+            }
 
         public bool UpdateRank(List<Rank_Character_Info> Ranking, CharacterInfo info, byte type)
-        {
+            {
             int CurrentRank = FindRank(Ranking, info, type);
             if (CurrentRank == -1) return false;//not in ranking list atm
-            
+
             int NewRank = CurrentRank;
             //next find our updated rank
-            for (int i = CurrentRank-1; i >= 0; i-- )
-            {
+            for (int i = CurrentRank - 1; i >= 0; i--)
+                {
                 if ((Ranking[i].level > info.Level) || ((Ranking[i].level == info.Level) && (Ranking[i].Experience > info.Experience))) break;
-                    NewRank =i;
-            }
+                NewRank = i;
+                }
 
             Ranking[CurrentRank].level = info.Level;
             Ranking[CurrentRank].Experience = info.Experience;
 
             if (NewRank < CurrentRank)
-            {//if we gained any ranks
+                {//if we gained any ranks
                 Ranking.Insert(NewRank, Ranking[CurrentRank]);
                 Ranking.RemoveAt(CurrentRank + 1);
-                for (int i = NewRank + 1; i < Math.Min(Ranking.Count, CurrentRank +1); i++)
-                {
+                for (int i = NewRank + 1; i < Math.Min(Ranking.Count, CurrentRank + 1); i++)
+                    {
                     SetNewRank(Ranking[i], i + 1, type);
+                    }
                 }
-            }
-            info.Rank[type] = NewRank+1;
-            
+            info.Rank[type] = NewRank + 1;
+
             return true;
-        }
+            }
 
         public void SetNewRank(Rank_Character_Info Rank, int Index, byte type)
-        {
+            {
             CharacterInfo Player = Rank.info as CharacterInfo;
             if (Player == null) return;
             Player.Rank[type] = Index;
-        }
+            }
 
         public void RemoveRank(CharacterInfo info)
-        {
+            {
             List<Rank_Character_Info> Ranking;
             int Rankindex = -1;
             //first check overall top           
             if (info.Level >= RankBottomLevel[0])
-            {
+                {
                 Ranking = RankTop;
                 Rankindex = FindRank(Ranking, info, 0);
                 if (Rankindex >= 0)
-                {
+                    {
                     Ranking.RemoveAt(Rankindex);
                     for (int i = Rankindex; i < Ranking.Count(); i++)
-                    {
+                        {
                         SetNewRank(Ranking[i], i, 0);
+                        }
                     }
                 }
-            }
             //next class based top
             if (info.Level >= RankBottomLevel[(byte)info.Class + 1])
-            {
+                {
                 Ranking = RankTop;
                 Rankindex = FindRank(Ranking, info, 1);
                 if (Rankindex >= 0)
-                {
+                    {
                     Ranking.RemoveAt(Rankindex);
                     for (int i = Rankindex; i < Ranking.Count(); i++)
-                    {
+                        {
                         SetNewRank(Ranking[i], i, 1);
+                        }
                     }
                 }
             }
-        }
 
         public void CheckRankUpdate(CharacterInfo info)
-        {
+            {
             List<Rank_Character_Info> Ranking;
             Rank_Character_Info NewRank;
-            
+
             //first check overall top           
             if (info.Level >= RankBottomLevel[0])
-            {
-                Ranking = RankTop;
-                if (!UpdateRank(Ranking, info,0))
                 {
-                    if (TryAddRank(Ranking, info, 0))
+                Ranking = RankTop;
+                if (!UpdateRank(Ranking, info, 0))
                     {
-                        if (Ranking.Count > RankCount)
+                    if (TryAddRank(Ranking, info, 0))
                         {
+                        if (Ranking.Count > RankCount)
+                            {
                             SetNewRank(Ranking[RankCount], 0, 0);
                             Ranking.RemoveAt(RankCount);
 
+                            }
                         }
                     }
-                }
                 if (Ranking.Count >= RankCount)
-                { 
-                    NewRank = Ranking[Ranking.Count -1];
+                    {
+                    NewRank = Ranking[Ranking.Count - 1];
                     if (NewRank != null)
                         RankBottomLevel[0] = NewRank.level;
-                }
-            }
-            //now check class top
-            if (info.Level >= RankBottomLevel[(byte)info.Class + 1])
-            {
-                Ranking = RankClass[(byte)info.Class];
-                if (!UpdateRank(Ranking, info,1))
-                {
-                    if (TryAddRank(Ranking, info, 1))
-                    {
-                        if (Ranking.Count > RankCount)
-                        {
-                            SetNewRank(Ranking[RankCount], 0, 1);
-                            Ranking.RemoveAt(RankCount);
-                        }
                     }
                 }
-                if (Ranking.Count >= RankCount)
+            //now check class top
+            if (info.Level >= RankBottomLevel[(byte)info.Class + 1])
                 {
-                    NewRank = Ranking[Ranking.Count -1];
+                Ranking = RankClass[(byte)info.Class];
+                if (!UpdateRank(Ranking, info, 1))
+                    {
+                    if (TryAddRank(Ranking, info, 1))
+                        {
+                        if (Ranking.Count > RankCount)
+                            {
+                            SetNewRank(Ranking[RankCount], 0, 1);
+                            Ranking.RemoveAt(RankCount);
+                            }
+                        }
+                    }
+                if (Ranking.Count >= RankCount)
+                    {
+                    NewRank = Ranking[Ranking.Count - 1];
                     if (NewRank != null)
                         RankBottomLevel[(byte)info.Class + 1] = NewRank.level;
+                    }
                 }
             }
         }
     }
-}
 

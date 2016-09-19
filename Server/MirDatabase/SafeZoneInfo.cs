@@ -5,11 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
     public class SafeZoneInfo
     {
+        public int SafeMapIndex;
         public Point Location;
         public ushort Size;
         public bool StartPoint;
@@ -20,6 +22,14 @@ namespace Server.MirDatabase
         {
 
         }
+
+        public SafeZoneInfo(MySqlDataReader readerSafeZoneInfo)
+            {
+            SafeMapIndex = Convert.ToInt32(readerSafeZoneInfo["SafeMapIndex"]);
+            Location = new Point(Convert.ToInt32(readerSafeZoneInfo["Location_X"]), Convert.ToInt32(readerSafeZoneInfo["Location_Y"]));
+            Size = Convert.ToUInt16(readerSafeZoneInfo["Size"]);
+            StartPoint = Convert.ToBoolean(readerSafeZoneInfo["StartPoint"]);
+            }
 
         public SafeZoneInfo(BinaryReader reader)
         {

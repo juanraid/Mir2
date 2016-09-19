@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -59,6 +60,82 @@ namespace Server.MirDatabase
 
 
         public QuestInfo() { }
+
+        public QuestInfo(MySqlDataReader readerQuestInfo)
+            {
+            Index = Convert.ToInt32(readerQuestInfo["IndexID"]);
+            Name = readerQuestInfo["Name"].ToString();
+            Group = readerQuestInfo["Group_"].ToString();
+            FileName = readerQuestInfo["FileName"].ToString();
+            RequiredMinLevel = Convert.ToInt32(readerQuestInfo["RequiredMinLevel"]);
+            RequiredMaxLevel = Convert.ToInt32(readerQuestInfo["RequiredMaxLevel"]);
+            RequiredQuest = Convert.ToInt32(readerQuestInfo["RequiredQuest"]);
+            RequiredClass = (RequiredClass)Convert.ToByte(readerQuestInfo["RequiredClass"]);
+            Type = (QuestType)Convert.ToByte(readerQuestInfo["Type"]);
+            GotoMessage = readerQuestInfo["GotoMessage"].ToString();
+            KillMessage = readerQuestInfo["KillMessage"].ToString();
+            ItemMessage = readerQuestInfo["ItemMessage"].ToString();
+            FlagMessage = readerQuestInfo["FlagMessage"].ToString();
+
+            LoadInfo();
+            }
+
+        public static void SaveQuestDB(QuestInfo info)
+            {
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string sqlCommand;
+                string query = "SELECT COUNT(*) FROM  " + Settings.DBServer + ".questinfo WHERE IndexID=" + info.Index;
+                using (var cmd = new MySqlCommand(query, connection))
+                    {
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (count == 0)
+                        {
+
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".questinfo (IndexID, Name, Group_, FileName, RequiredMinLevel, RequiredMaxLevel, RequiredQuest, RequiredClass, Type, GotoMessage, KillMessage, ItemMessage, FlagMessage) VALUES (@IndexID, @Name, @Group_, @FileName, @RequiredMinLevel, @RequiredMaxLevel, @RequiredQuest, @RequiredClass, @Type, @GotoMessage, @KillMessage, @ItemMessage, @FlagMessage)";
+
+                        }
+
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".questinfo SET IndexID = @IndexID, Name = @Name, Group_ = @Group_, FileName = @FileName, RequiredMinLevel = @RequiredMinLevel, RequiredMaxLevel = @RequiredMaxLevel, RequiredQuest = @RequiredQuest, RequiredClass = @RequiredClass,Type = @Type, GotoMessage = @GotoMessage, KillMessage = @KillMessage, ItemMessage = @ItemMessage, FlagMessage = @FlagMessage  WHERE IndexID = " + info.Index + "";
+                        }
+                    }
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@IndexID", info.Index);
+                    command.Parameters.AddWithValue("@Name", info.Name);
+                    command.Parameters.AddWithValue("@Group_", info.Group);
+                    command.Parameters.AddWithValue("@FileName", info.FileName);
+                    command.Parameters.AddWithValue("@RequiredMinLevel", info.RequiredMinLevel);
+                    command.Parameters.AddWithValue("@RequiredMaxLevel", info.RequiredMaxLevel);
+                    command.Parameters.AddWithValue("@RequiredQuest", info.RequiredQuest);
+                    command.Parameters.AddWithValue("@RequiredClass", info.RequiredClass);
+                    command.Parameters.AddWithValue("@Type", info.Type);
+                    command.Parameters.AddWithValue("@GotoMessage", info.GotoMessage);
+                    command.Parameters.AddWithValue("@KillMessage", info.KillMessage);
+                    command.Parameters.AddWithValue("@ItemMessage", info.ItemMessage);
+                    command.Parameters.AddWithValue("@FlagMessage", info.FlagMessage);
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
 
         public QuestInfo(BinaryReader reader)
         {

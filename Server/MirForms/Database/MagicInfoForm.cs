@@ -28,7 +28,7 @@ namespace Server
                 MagiclistBox.Items.Add(Envir.MagicInfoList[i]);
             UpdateMagicForm();
         }
-
+        
         private void UpdateMagicForm(byte field = 0)
         {
              _selectedMagicInfo = (MagicInfo)MagiclistBox.SelectedItem;
@@ -115,9 +115,15 @@ namespace Server
             this.MagiclistBox = new System.Windows.Forms.ListBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.lblSelected = new System.Windows.Forms.Label();
+            this.SaveButton = new System.Windows.Forms.Button();
             this.lblDamageExample = new System.Windows.Forms.Label();
+            this.lblDamageExplained = new System.Windows.Forms.Label();
+            this.lblSelected = new System.Windows.Forms.Label();
             this.panel4 = new System.Windows.Forms.Panel();
+            this.txtDmgMultBoost = new System.Windows.Forms.TextBox();
+            this.txtDmgMultBase = new System.Windows.Forms.TextBox();
+            this.label21 = new System.Windows.Forms.Label();
+            this.label22 = new System.Windows.Forms.Label();
             this.txtDmgBonusMax = new System.Windows.Forms.TextBox();
             this.txtDmgBonusMin = new System.Windows.Forms.TextBox();
             this.label18 = new System.Windows.Forms.Label();
@@ -159,11 +165,6 @@ namespace Server
             this.label1 = new System.Windows.Forms.Label();
             this.lblBookValid = new System.Windows.Forms.Label();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.txtDmgMultBoost = new System.Windows.Forms.TextBox();
-            this.txtDmgMultBase = new System.Windows.Forms.TextBox();
-            this.label21 = new System.Windows.Forms.Label();
-            this.label22 = new System.Windows.Forms.Label();
-            this.lblDamageExplained = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.panel4.SuspendLayout();
@@ -194,6 +195,7 @@ namespace Server
             // 
             // tabPage1
             // 
+            this.tabPage1.Controls.Add(this.SaveButton);
             this.tabPage1.Controls.Add(this.lblDamageExample);
             this.tabPage1.Controls.Add(this.lblDamageExplained);
             this.tabPage1.Controls.Add(this.lblSelected);
@@ -212,14 +214,15 @@ namespace Server
             this.tabPage1.Text = "Basics";
             this.tabPage1.UseVisualStyleBackColor = true;
             // 
-            // lblSelected
+            // SaveButton
             // 
-            this.lblSelected.AutoSize = true;
-            this.lblSelected.Location = new System.Drawing.Point(20, 3);
-            this.lblSelected.Name = "lblSelected";
-            this.lblSelected.Size = new System.Drawing.Size(75, 13);
-            this.lblSelected.TabIndex = 8;
-            this.lblSelected.Text = "Selected skill: ";
+            this.SaveButton.Location = new System.Drawing.Point(553, 13);
+            this.SaveButton.Name = "SaveButton";
+            this.SaveButton.Size = new System.Drawing.Size(117, 23);
+            this.SaveButton.TabIndex = 26;
+            this.SaveButton.Text = "Save";
+            this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // lblDamageExample
             // 
@@ -229,6 +232,24 @@ namespace Server
             this.lblDamageExample.Size = new System.Drawing.Size(89, 13);
             this.lblDamageExample.TabIndex = 0;
             this.lblDamageExample.Text = "Damage example";
+            // 
+            // lblDamageExplained
+            // 
+            this.lblDamageExplained.AutoSize = true;
+            this.lblDamageExplained.Location = new System.Drawing.Point(11, 366);
+            this.lblDamageExplained.Name = "lblDamageExplained";
+            this.lblDamageExplained.Size = new System.Drawing.Size(50, 13);
+            this.lblDamageExplained.TabIndex = 9;
+            this.lblDamageExplained.Text = "Damage:";
+            // 
+            // lblSelected
+            // 
+            this.lblSelected.AutoSize = true;
+            this.lblSelected.Location = new System.Drawing.Point(20, 3);
+            this.lblSelected.Name = "lblSelected";
+            this.lblSelected.Size = new System.Drawing.Size(75, 13);
+            this.lblSelected.TabIndex = 8;
+            this.lblSelected.Text = "Selected skill: ";
             // 
             // panel4
             // 
@@ -250,6 +271,42 @@ namespace Server
             this.panel4.Name = "panel4";
             this.panel4.Size = new System.Drawing.Size(233, 191);
             this.panel4.TabIndex = 6;
+            // 
+            // txtDmgMultBoost
+            // 
+            this.txtDmgMultBoost.Location = new System.Drawing.Point(168, 157);
+            this.txtDmgMultBoost.Name = "txtDmgMultBoost";
+            this.txtDmgMultBoost.Size = new System.Drawing.Size(46, 20);
+            this.txtDmgMultBoost.TabIndex = 14;
+            this.toolTip1.SetToolTip(this.txtDmgMultBoost, "extra multiplyer apply\'d for every skill level");
+            this.txtDmgMultBoost.TextChanged += new System.EventHandler(this.txtDmgMultBoost_TextChanged);
+            // 
+            // txtDmgMultBase
+            // 
+            this.txtDmgMultBase.Location = new System.Drawing.Point(168, 131);
+            this.txtDmgMultBase.Name = "txtDmgMultBase";
+            this.txtDmgMultBase.Size = new System.Drawing.Size(46, 20);
+            this.txtDmgMultBase.TabIndex = 13;
+            this.toolTip1.SetToolTip(this.txtDmgMultBase, "multiplier apply\'d to total skill dmg");
+            this.txtDmgMultBase.TextChanged += new System.EventHandler(this.txtDmgMultBase_TextChanged);
+            // 
+            // label21
+            // 
+            this.label21.AutoSize = true;
+            this.label21.Location = new System.Drawing.Point(12, 160);
+            this.label21.Name = "label21";
+            this.label21.Size = new System.Drawing.Size(154, 13);
+            this.label21.TabIndex = 12;
+            this.label21.Text = "Damage multiplyer boost/skilllvl";
+            // 
+            // label22
+            // 
+            this.label22.AutoSize = true;
+            this.label22.Location = new System.Drawing.Point(12, 134);
+            this.label22.Name = "label22";
+            this.label22.Size = new System.Drawing.Size(119, 13);
+            this.label22.TabIndex = 11;
+            this.label22.Text = "Damage multiplyer base";
             // 
             // txtDmgBonusMax
             // 
@@ -627,51 +684,6 @@ namespace Server
             this.lblBookValid.TabIndex = 0;
             this.lblBookValid.Text = "Searching for books";
             // 
-            // txtDmgMultBoost
-            // 
-            this.txtDmgMultBoost.Location = new System.Drawing.Point(168, 157);
-            this.txtDmgMultBoost.Name = "txtDmgMultBoost";
-            this.txtDmgMultBoost.Size = new System.Drawing.Size(46, 20);
-            this.txtDmgMultBoost.TabIndex = 14;
-            this.toolTip1.SetToolTip(this.txtDmgMultBoost, "extra multiplyer apply\'d for every skill level");
-            this.txtDmgMultBoost.TextChanged += new System.EventHandler(this.txtDmgMultBoost_TextChanged);
-            // 
-            // txtDmgMultBase
-            // 
-            this.txtDmgMultBase.Location = new System.Drawing.Point(168, 131);
-            this.txtDmgMultBase.Name = "txtDmgMultBase";
-            this.txtDmgMultBase.Size = new System.Drawing.Size(46, 20);
-            this.txtDmgMultBase.TabIndex = 13;
-            this.toolTip1.SetToolTip(this.txtDmgMultBase, "multiplier apply\'d to total skill dmg");
-            this.txtDmgMultBase.TextChanged += new System.EventHandler(this.txtDmgMultBase_TextChanged);
-            // 
-            // label21
-            // 
-            this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(12, 160);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(154, 13);
-            this.label21.TabIndex = 12;
-            this.label21.Text = "Damage multiplyer boost/skilllvl";
-            // 
-            // label22
-            // 
-            this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(12, 134);
-            this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(119, 13);
-            this.label22.TabIndex = 11;
-            this.label22.Text = "Damage multiplyer base";
-            // 
-            // lblDamageExplained
-            // 
-            this.lblDamageExplained.AutoSize = true;
-            this.lblDamageExplained.Location = new System.Drawing.Point(11, 366);
-            this.lblDamageExplained.Name = "lblDamageExplained";
-            this.lblDamageExplained.Size = new System.Drawing.Size(50, 13);
-            this.lblDamageExplained.TabIndex = 9;
-            this.lblDamageExplained.Text = "Damage:";
-            // 
             // MagicInfoForm
             // 
             this.ClientSize = new System.Drawing.Size(927, 542);
@@ -698,7 +710,7 @@ namespace Server
         private void MagicInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             //do something to save it all
-            Envir.SaveDB();
+            //Envir.SaveDB();
         }
 
         private void MagiclistBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -940,5 +952,20 @@ namespace Server
             _selectedMagicInfo.MultiplierBonus = temp;
             UpdateMagicForm(2);
         }
-    }
+
+        private void SaveButton_Click(object sender, EventArgs e)
+            {
+            var list = MagiclistBox.SelectedItems.Cast<MagicInfo>().ToList();
+            if (list.Count == 0)
+                {
+                MessageBox.Show("Not selected any Magics");
+                return;
+                }
+
+            for (int i = 0; i < list.Count; i++)
+                MagicInfo.SaveMagicInfoDB(list[i]);
+            MessageBox.Show("Saved Magic(s)");
+
+            }
+        }
 }

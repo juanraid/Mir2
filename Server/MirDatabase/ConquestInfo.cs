@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -56,6 +57,40 @@ namespace Server.MirDatabase
         {
 
         }
+
+        public ConquestInfo(MySqlDataReader readerconquestinfo)
+            {
+            Index = Convert.ToInt32(readerconquestinfo["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerconquestinfo["Location_X"]), Convert.ToInt32(readerconquestinfo["Location_Y"]));
+            Size = Convert.ToUInt16(readerconquestinfo["Size"]);
+            Name = Convert.ToString(readerconquestinfo["Name"]);
+            MapIndex = Convert.ToInt32(readerconquestinfo["MapIndex"]);
+            PalaceIndex = Convert.ToInt32(readerconquestinfo["PalaceIndex"]);
+            GuardIndex = Convert.ToInt32(readerconquestinfo["GuardIndex"]);
+            GateIndex = Convert.ToInt32(readerconquestinfo["GateIndex"]);
+            WallIndex = Convert.ToInt32(readerconquestinfo["WallIndex"]);
+            SiegeIndex = Convert.ToInt32(readerconquestinfo["SiegeIndex"]);
+
+            StartHour = Convert.ToByte(readerconquestinfo["StartHour"]);
+            WarLength = Convert.ToInt32(readerconquestinfo["WarLength"]);
+            Type = (ConquestType)Convert.ToByte(readerconquestinfo["Type"]);
+            Game = (ConquestGame)Convert.ToByte(readerconquestinfo["Game"]);
+
+            Monday = Convert.ToBoolean(readerconquestinfo["Monday"]);
+            Tuesday = Convert.ToBoolean(readerconquestinfo["Tuesday"]);
+            Wednesday = Convert.ToBoolean(readerconquestinfo["Wednesday"]);
+            Thursday = Convert.ToBoolean(readerconquestinfo["Thursday"]);
+            Friday = Convert.ToBoolean(readerconquestinfo["Friday"]);
+            Saturday = Convert.ToBoolean(readerconquestinfo["Saturday"]);
+            Sunday = Convert.ToBoolean(readerconquestinfo["Sunday"]);
+
+            KingLocation = new Point(Convert.ToInt32(readerconquestinfo["KingLocation_X"]), Convert.ToInt32(readerconquestinfo["KingLocation_Y"]));
+            KingSize = Convert.ToUInt16(readerconquestinfo["KingSize"]);
+            FullMap = Convert.ToBoolean(readerconquestinfo["FullMap"]);
+            FlagIndex = Convert.ToInt32(readerconquestinfo["FlagIndex"]);
+            ControlPointIndex = Convert.ToInt32(readerconquestinfo["ControlPointIndex"]);
+
+            }
 
         public ConquestInfo(BinaryReader reader)
         {
@@ -234,6 +269,14 @@ namespace Server.MirDatabase
         {
 
         }
+        public ConquestSiegeInfo(MySqlDataReader readerConquestSieges)
+            {
+            Index = Convert.ToInt32(readerConquestSieges["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerConquestSieges["Location_X"]), Convert.ToInt32(readerConquestSieges["Location_Y"]));
+            MobIndex = Convert.ToInt32(readerConquestSieges["MobIndex"]);
+            Name = Convert.ToString(readerConquestSieges["Name"]);
+            RepairCost = Convert.ToUInt32(readerConquestSieges["RepairCost"]);
+            }
 
         public ConquestSiegeInfo(BinaryReader reader)
         {
@@ -274,7 +317,14 @@ namespace Server.MirDatabase
         {
 
         }
-
+        public ConquestWallInfo(MySqlDataReader readerConquestWalls)
+            {
+            Index = Convert.ToInt32(readerConquestWalls["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerConquestWalls["Location_X"]), Convert.ToInt32(readerConquestWalls["Location_Y"]));
+            MobIndex = Convert.ToInt32(readerConquestWalls["MobIndex"]);
+            Name = Convert.ToString(readerConquestWalls["Name"]);
+            RepairCost = Convert.ToUInt32(readerConquestWalls["RepairCost"]);
+            }
         public ConquestWallInfo(BinaryReader reader)
         {
             Index = reader.ReadInt32();
@@ -314,7 +364,14 @@ namespace Server.MirDatabase
         {
 
         }
-
+        public ConquestGateInfo(MySqlDataReader readerConquestGates)
+            {
+            Index = Convert.ToInt32(readerConquestGates["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerConquestGates["Location_X"]), Convert.ToInt32(readerConquestGates["Location_Y"]));
+            MobIndex = Convert.ToInt32(readerConquestGates["MobIndex"]);
+            Name = Convert.ToString(readerConquestGates["Name"]);
+            RepairCost = Convert.ToUInt32(readerConquestGates["RepairCost"]);
+            }
         public ConquestGateInfo(BinaryReader reader)
         {
             Index = reader.ReadInt32();
@@ -354,6 +411,14 @@ namespace Server.MirDatabase
         {
 
         }
+        public ConquestArcherInfo(MySqlDataReader readerConquestGuards)
+            {
+            Index = Convert.ToInt32(readerConquestGuards["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerConquestGuards["Location_X"]), Convert.ToInt32(readerConquestGuards["Location_Y"]));
+            MobIndex = Convert.ToInt32(readerConquestGuards["MobIndex"]);
+            Name = Convert.ToString(readerConquestGuards["Name"]);
+            RepairCost = Convert.ToUInt32(readerConquestGuards["RepairCost"]);
+            }
 
         public ConquestArcherInfo(BinaryReader reader)
         {
@@ -393,6 +458,14 @@ namespace Server.MirDatabase
         {
 
         }
+
+        public ConquestFlagInfo(MySqlDataReader readerConquestFlag)
+            {
+            Index = Convert.ToInt32(readerConquestFlag["IndexID"]);
+            Location = new Point(Convert.ToInt32(readerConquestFlag["Location_X"]), Convert.ToInt32(readerConquestFlag["Location_Y"]));
+            Name = readerConquestFlag["Name"].ToString();
+            FileName = readerConquestFlag["FileName"].ToString();
+            }
 
         public ConquestFlagInfo(BinaryReader reader)
         {

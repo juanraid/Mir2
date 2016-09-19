@@ -7,6 +7,7 @@ using Server.MirObjects.Monsters;
 using S = ServerPackets;
 using System.IO;
 using System.Linq;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirObjects
 {
@@ -769,6 +770,60 @@ namespace Server.MirObjects
         public bool Paused;
 
         public Buff() { }
+
+        public Buff(MySqlDataReader readerBuff)
+            {
+            Type = (BuffType)Convert.ToByte(readerBuff["Type"]);
+            Caster = null;
+            Visible = Convert.ToBoolean(readerBuff["Visible"]);
+            ObjectID = Convert.ToUInt32(readerBuff["ObjectID"]);
+            ExpireTime = Convert.ToInt64(readerBuff["ExpireTime"]);
+            Infinite = Convert.ToBoolean(readerBuff["Infinite"]);
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                MySqlCommand instruccion = connection.CreateCommand();
+
+                // int Position = Convert.ToInt32(readerBuff["Position"]);
+
+                instruccion.CommandText = "SELECT Value FROM " + Settings.DBAccount + ".buff_value WHERE ChName = '" + readerBuff["ChName"].ToString() + "' And Type = '" + readerBuff["Type"].ToString() + "' ORDER BY Position";
+
+                MySqlDataReader readerValue = instruccion.ExecuteReader();
+
+                List<int> cant = new List<int>();
+
+                while (readerValue.Read())
+                    {
+                    cant.Add(Convert.ToInt32(readerValue["Value"]));
+                    }
+
+                if (readerValue.HasRows)
+                    {
+
+                    Values = new int[cant.Count];
+                    Values = cant.ToArray();
+
+                    }
+
+                readerValue.Dispose();
+                connection.Close();
+
+
+                }
+
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            
+            }
 
         public Buff(BinaryReader reader)
         {

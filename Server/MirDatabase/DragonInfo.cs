@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -39,6 +40,30 @@ namespace Server.MirDatabase
                 Drops[i] = new List<DropInfo>();
             }
         }
+
+        public DragonInfo(MySqlDataReader readerDragonInfo)
+            {
+            Enabled = Convert.ToBoolean(readerDragonInfo["Enabled"]);
+            MapFileName = readerDragonInfo["MapFileName"].ToString();
+            MonsterName = readerDragonInfo["MonsterName"].ToString();
+            BodyName = readerDragonInfo["BodyName"].ToString();
+
+            Location = new Point(Convert.ToInt16(readerDragonInfo["Location_X"]), Convert.ToUInt16(readerDragonInfo["Location_Y"]));
+            DropAreaTop = new Point(Convert.ToUInt16(readerDragonInfo["DropAreaTop_X"]), Convert.ToUInt16(readerDragonInfo["DropAreaTop_Y"]));
+            DropAreaBottom = new Point(Convert.ToUInt16(readerDragonInfo["DropAreaBottom_X"]), Convert.ToUInt16(readerDragonInfo["DropAreaBottom_Y"]));
+
+            Level = 1;
+
+            for (int i = 0; i < Exps.Length; i++)
+                {
+                Exps[i] = Convert.ToInt64(readerDragonInfo["Exps_" + i]);
+                }
+            for (int i = 0; i < Drops.Length; i++)
+                {
+                Drops[i] = new List<DropInfo>();
+                }
+            }
+
         public DragonInfo(BinaryReader reader)
         {
             Enabled = reader.ReadBoolean();

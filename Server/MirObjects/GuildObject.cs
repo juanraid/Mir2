@@ -494,6 +494,9 @@ namespace Server.MirObjects
             if (formermember != null)
             {
                 formermember.Info.GuildIndex = -1;
+                string UpdateGuild = "UPDATE " + Settings.DBAccount + ".characterinfo SET  GuildIndex = '" + formermember.Info.GuildIndex + "'  WHERE IndexID = '" + formermember.Info.Index + "'";
+
+                Envir.ConnectADB.Update(UpdateGuild);
                 formermember.MyGuild = null;
                 formermember.MyGuildRank = null;
                 formermember.ReceiveChat(kickself ? "You have left your guild." : "You have been removed from your guild.", ChatType.Guild);

@@ -50,14 +50,15 @@
             this.label4 = new System.Windows.Forms.Label();
             this.Class_combo = new System.Windows.Forms.ComboBox();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.ServerLog_button = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.CredxGold_textbox = new System.Windows.Forms.TextBox();
+            this.ServerLog_button = new System.Windows.Forms.Button();
             this.Remove_button = new System.Windows.Forms.Button();
             this.ClassFilter_lb = new System.Windows.Forms.ComboBox();
             this.SectionFilter_lb = new System.Windows.Forms.ComboBox();
             this.CategoryFilter_lb = new System.Windows.Forms.ComboBox();
             this.ResetFilter_button = new System.Windows.Forms.Button();
+            this.SaveButton = new System.Windows.Forms.Button();
             this.ItemDetails_gb.SuspendLayout();
             this.groupBox3.SuspendLayout();
             this.SuspendLayout();
@@ -303,16 +304,6 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Gameshop Settings";
             // 
-            // ServerLog_button
-            // 
-            this.ServerLog_button.Location = new System.Drawing.Point(220, 407);
-            this.ServerLog_button.Name = "ServerLog_button";
-            this.ServerLog_button.Size = new System.Drawing.Size(266, 23);
-            this.ServerLog_button.TabIndex = 112;
-            this.ServerLog_button.Text = "Reset Purchase Logs (Stock Levels will reset)";
-            this.ServerLog_button.UseVisualStyleBackColor = true;
-            this.ServerLog_button.Click += new System.EventHandler(this.ServerLog_button_Click);
-            // 
             // label2
             // 
             this.label2.AutoSize = true;
@@ -331,9 +322,19 @@
             this.CredxGold_textbox.TabIndex = 88;
             this.CredxGold_textbox.TextChanged += new System.EventHandler(this.CredxGold_textbox_TextChanged);
             // 
+            // ServerLog_button
+            // 
+            this.ServerLog_button.Location = new System.Drawing.Point(248, 407);
+            this.ServerLog_button.Name = "ServerLog_button";
+            this.ServerLog_button.Size = new System.Drawing.Size(238, 23);
+            this.ServerLog_button.TabIndex = 112;
+            this.ServerLog_button.Text = "Reset Purchase Logs (Stock Levels will reset)";
+            this.ServerLog_button.UseVisualStyleBackColor = true;
+            this.ServerLog_button.Click += new System.EventHandler(this.ServerLog_button_Click);
+            // 
             // Remove_button
             // 
-            this.Remove_button.Location = new System.Drawing.Point(112, 407);
+            this.Remove_button.Location = new System.Drawing.Point(140, 407);
             this.Remove_button.Name = "Remove_button";
             this.Remove_button.Size = new System.Drawing.Size(102, 23);
             this.Remove_button.TabIndex = 106;
@@ -386,11 +387,22 @@
             this.ResetFilter_button.UseVisualStyleBackColor = true;
             this.ResetFilter_button.Click += new System.EventHandler(this.ResetFilter_button_Click);
             // 
+            // SaveButton
+            // 
+            this.SaveButton.Location = new System.Drawing.Point(12, 407);
+            this.SaveButton.Name = "SaveButton";
+            this.SaveButton.Size = new System.Drawing.Size(102, 23);
+            this.SaveButton.TabIndex = 113;
+            this.SaveButton.Text = "Save";
+            this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
+            // 
             // GameShop
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(498, 436);
+            this.Controls.Add(this.SaveButton);
             this.Controls.Add(this.ServerLog_button);
             this.Controls.Add(this.ResetFilter_button);
             this.Controls.Add(this.CategoryFilter_lb);
@@ -444,5 +456,6 @@
         private System.Windows.Forms.ComboBox CategoryFilter_lb;
         private System.Windows.Forms.Button ResetFilter_button;
         private System.Windows.Forms.Button ServerLog_button;
-    }
+        private System.Windows.Forms.Button SaveButton;
+        }
 }

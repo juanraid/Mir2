@@ -40,7 +40,7 @@ namespace Server
             WarType_combo.Items.AddRange(Enum.GetValues(typeof(ConquestType)).Cast<object>().ToArray());
             WarMode_combo.Items.AddRange(Enum.GetValues(typeof(ConquestGame)).Cast<object>().ToArray());
             WarType_combo.Items.Remove(ConquestType.Forced);
-
+            
             for (int i = 0; i < Envir.MonsterInfoList.Count; i++)
             {
                 if (Envir.MonsterInfoList[i].AI == 80)
@@ -258,6 +258,10 @@ namespace Server
             Fri_checkbox.Checked = false;
             Sat_checkbox.Checked = false;
             Sun_checkbox.Checked = false;
+            Gates_gb.Enabled = false;
+            Walls_gb.Enabled = false;
+            Flag_gb.Enabled = false;
+            Control_gb.Enabled = false;
 
             if (selectedConquest != null)
             {
@@ -331,6 +335,8 @@ namespace Server
         private void AddConq_button_Click(object sender, EventArgs e)
         {
             Envir.ConquestInfos.Add(new ConquestInfo { Index = ++Envir.ConquestIndex, Location = new Point(0, 0), Size = 10, Name = "Conquest Wall", MapIndex = 1, PalaceIndex = 2});
+            string Update = "UPDATE " + Settings.DBServer + ".servercount SET ConquestIndex = '" + Envir.ConquestIndex + "'  WHERE IndexID = '1'";
+            Envir.ConnectADB.Update(Update);
             UpdateInterface();
         }
 
@@ -372,7 +378,8 @@ namespace Server
 
         private void ConquestInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Envir.SaveDB();
+            // Envir.SaveDB();
+            Envir.SaveConquestInfo();
         }
 
         private void Name_textbox_TextChanged(object sender, EventArgs e)
@@ -502,8 +509,6 @@ namespace Server
 
         private void Gates_listbox_SelectedIndexChanged(object sender, EventArgs e)
         {
-
-
             if (ActiveControl != sender) return;
             if (Gates_listbox.SelectedIndex != -1)
             {
@@ -527,6 +532,7 @@ namespace Server
             }
             ActiveControl.BackColor = SystemColors.Window;
             selectedGate.Location.X = temp;
+
         }
 
         private void GateIndex_combo_SelectedIndexChanged(object sender, EventArgs e)

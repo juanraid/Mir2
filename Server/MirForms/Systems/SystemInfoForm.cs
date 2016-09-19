@@ -175,9 +175,10 @@ namespace Server
 
             if (GemChanged)
                 Settings.SaveGem();
+
             if (SpawnChanged)
-                Envir.SaveDB();
-        }
+                Envir.SaveRespawnTimer();
+            }
 
         #region Fishing
 

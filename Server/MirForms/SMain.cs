@@ -222,6 +222,13 @@ namespace Server
 
             form.ShowDialog();
         }
+        private void accountDBToolStripMenuItem_Click(object sender, EventArgs e)
+            {
+            AccountDB form = new AccountDB();
+
+            form.ShowDialog();
+            }
+        
 
         private void mapInfoToolStripMenuItem_Click(object sender, EventArgs e)
         {

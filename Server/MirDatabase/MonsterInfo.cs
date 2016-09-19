@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -34,6 +35,118 @@ namespace Server.MirDatabase
         public MonsterInfo()
         {
         }
+
+        public MonsterInfo(MySqlDataReader readerMonsterInfo)
+            {
+            Index = Convert.ToInt32(readerMonsterInfo["IndexID"]);
+            Name = readerMonsterInfo["Name"].ToString();
+
+
+            Image = (Monster)Convert.ToUInt16(readerMonsterInfo["Image"]);
+            AI = Convert.ToByte(readerMonsterInfo["AI"]);
+            Effect = Convert.ToByte(readerMonsterInfo["Effect"]);
+
+            Level = Convert.ToUInt16(readerMonsterInfo["Level"]);
+
+
+            ViewRange = Convert.ToByte(readerMonsterInfo["ViewRange"]);
+
+            HP = Convert.ToUInt32(readerMonsterInfo["HP"]);
+
+            MinAC = Convert.ToUInt16(readerMonsterInfo["MinAC"]);
+            MaxAC = Convert.ToUInt16(readerMonsterInfo["MaxAC"]);
+            MinMAC = Convert.ToUInt16(readerMonsterInfo["MinMAC"]);
+            MaxMAC = Convert.ToUInt16(readerMonsterInfo["MaxMAC"]);
+            MinDC = Convert.ToUInt16(readerMonsterInfo["MinDC"]);
+            MaxDC = Convert.ToUInt16(readerMonsterInfo["MaxDC"]);
+            MinMC = Convert.ToUInt16(readerMonsterInfo["MinMC"]);
+            MaxMC = Convert.ToUInt16(readerMonsterInfo["MaxMC"]);
+            MinSC = Convert.ToUInt16(readerMonsterInfo["MinSC"]);
+            MaxSC = Convert.ToUInt16(readerMonsterInfo["MaxSC"]);
+
+
+            Accuracy = Convert.ToByte(readerMonsterInfo["Accuracy"]);
+            Agility = Convert.ToByte(readerMonsterInfo["Agility"]);
+            Light = Convert.ToByte(readerMonsterInfo["Light"]);
+
+            AttackSpeed = Convert.ToUInt16(readerMonsterInfo["AttackSpeed"]);
+            MoveSpeed = Convert.ToUInt16(readerMonsterInfo["MoveSpeed"]);
+            Experience = Convert.ToUInt32(readerMonsterInfo["Experience"]);
+
+            CanPush = Convert.ToBoolean(readerMonsterInfo["CanPush"]);
+            CanTame = Convert.ToBoolean(readerMonsterInfo["CanTame"]);
+
+            AutoRev = Convert.ToBoolean(readerMonsterInfo["AutoRev_"]);
+            Undead = Convert.ToBoolean(readerMonsterInfo["Undead_"]);
+            CoolEye = Convert.ToByte(readerMonsterInfo["CoolEye_"]);
+            }
+
+        public static void SaveMonsterDB(MonsterInfo info)
+            {
+            try
+                {
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                string sqlMonsterExists = "SELECT Count(*) FROM " + Settings.DBServer + ".monsterinfo where IndexID = '" + info.Index + "'";
+                string sqlCommand;
+
+                if (Envir.ConnectADB.Count(sqlMonsterExists) > 0)
+                    {
+                    sqlCommand = "UPDATE  " + Settings.DBServer + ".monsterinfo SET IndexID = @IndexID, AI = @AI, Accuracy = @Accuracy, Agility = @Agility, AttackSpeed = @AttackSpeed, CanPush = @CanPush, CanTame = @CanTame, Effect = @Effect, Experience = @Experience, HP = @HP, Image = @Image, Level = @Level, Light = @Light, MaxAC = @MaxAC, MaxDC = @MaxDC, MaxMAC = @MaxMAC, MaxMC = @MaxMC, MaxSC = @MaxSC, MinAC = @MinAC, MinDC = @MinDC, MinMAC = @MinMAC, MinMC = @MinMC, MinSC = @MinSC, MoveSpeed = @MoveSpeed, Name = @Name, ViewRange = @ViewRange, AutoRev_ = @AutoRev_, CoolEye_ = @CoolEye_, Undead_ = @Undead_ where IndexID = " + info.Index;
+                    
+                    }
+                else
+                    {
+                    sqlCommand = "INSERT INTO  " + Settings.DBServer + ".monsterinfo (IndexID, AI, Accuracy, Agility, AttackSpeed, CanPush, CanTame,Effect, Experience, HP, Image, Level, Light, MaxAC, MaxDC, MaxMAC, MaxMC, MaxSC, MinAC, MinDC, MinMAC, MinMC, MinSC, MoveSpeed, Name, ViewRange, AutoRev_, CoolEye_, Undead_ ) VALUES (@IndexID, @AI, @Accuracy, @Agility, @AttackSpeed, @CanPush, @CanTame, @Effect, @Experience, @HP, @Image, @Level, @Light, @MaxAC, @MaxDC, @MaxMAC, @MaxMC, @MaxSC, @MinAC, @MinDC, @MinMAC, @MinMC, @MinSC, @MoveSpeed, @Name, @ViewRange ,@AutoRev_, @CoolEye_, @Undead_)";
+                    }
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@IndexID", info.Index);
+                    command.Parameters.AddWithValue("@Name", info.Name);
+                    command.Parameters.AddWithValue("@Image", info.Image);
+                    command.Parameters.AddWithValue("@AI", info.AI);
+                    command.Parameters.AddWithValue("@Effect", info.Effect);
+                    command.Parameters.AddWithValue("@Level", info.Level);
+                    command.Parameters.AddWithValue("@ViewRange", info.ViewRange);
+                    command.Parameters.AddWithValue("@HP", info.HP);
+                    command.Parameters.AddWithValue("@MinAC", info.MinAC);
+                    command.Parameters.AddWithValue("@MaxAC", info.MaxAC);
+                    command.Parameters.AddWithValue("@MinMAC", info.MinMAC);
+                    command.Parameters.AddWithValue("@MaxMAC", info.MaxMAC);
+                    command.Parameters.AddWithValue("@MinDC", info.MinDC);
+                    command.Parameters.AddWithValue("@MaxDC", info.MaxDC);
+                    command.Parameters.AddWithValue("@MinMC", info.MinMC);
+                    command.Parameters.AddWithValue("@MaxMC", info.MaxMC);
+                    command.Parameters.AddWithValue("@MinSC", info.MinSC);
+                    command.Parameters.AddWithValue("@MaxSC", info.MaxSC);
+                    command.Parameters.AddWithValue("@Accuracy", info.Accuracy);
+                    command.Parameters.AddWithValue("@Agility", info.Agility);
+                    command.Parameters.AddWithValue("@Light", info.Light);
+                    command.Parameters.AddWithValue("@AttackSpeed", info.AttackSpeed);
+                    command.Parameters.AddWithValue("@MoveSpeed", info.MoveSpeed);
+                    command.Parameters.AddWithValue("@Experience", info.Experience);
+                    command.Parameters.AddWithValue("@CanTame", info.CanTame);
+                    command.Parameters.AddWithValue("@CanPush", info.CanPush);
+                    command.Parameters.AddWithValue("@AutoRev_", info.AutoRev);
+                    command.Parameters.AddWithValue("@CoolEye_", info.CoolEye);
+                    command.Parameters.AddWithValue("@Undead_", info.Undead);
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
+
         public MonsterInfo(BinaryReader reader)
         {
             Index = reader.ReadInt32();

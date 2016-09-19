@@ -63,9 +63,7 @@
             this.QuestInfoListBox = new System.Windows.Forms.ListBox();
             this.PasteMButton = new System.Windows.Forms.Button();
             this.CopyMButton = new System.Windows.Forms.Button();
-            this.ExportButton = new System.Windows.Forms.Button();
-            this.ImportButton = new System.Windows.Forms.Button();
-            this.ExportSelectedButton = new System.Windows.Forms.Button();
+            this.SaveButton = new System.Windows.Forms.Button();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.QuestInfoPanel.SuspendLayout();
@@ -425,44 +423,22 @@
             this.CopyMButton.Text = "Copy";
             this.CopyMButton.UseVisualStyleBackColor = true;
             // 
-            // ExportButton
+            // SaveButton
             // 
-            this.ExportButton.Location = new System.Drawing.Point(701, 12);
-            this.ExportButton.Name = "ExportButton";
-            this.ExportButton.Size = new System.Drawing.Size(75, 23);
-            this.ExportButton.TabIndex = 23;
-            this.ExportButton.Text = "Export All";
-            this.ExportButton.UseVisualStyleBackColor = true;
-            this.ExportButton.Click += new System.EventHandler(this.ExportAllButton_Click);
-            // 
-            // ImportButton
-            // 
-            this.ImportButton.Location = new System.Drawing.Point(498, 12);
-            this.ImportButton.Name = "ImportButton";
-            this.ImportButton.Size = new System.Drawing.Size(75, 23);
-            this.ImportButton.TabIndex = 24;
-            this.ImportButton.Text = "Import";
-            this.ImportButton.UseVisualStyleBackColor = true;
-            this.ImportButton.Click += new System.EventHandler(this.ImportButton_Click);
-            // 
-            // ExportSelectedButton
-            // 
-            this.ExportSelectedButton.Location = new System.Drawing.Point(578, 12);
-            this.ExportSelectedButton.Name = "ExportSelectedButton";
-            this.ExportSelectedButton.Size = new System.Drawing.Size(117, 23);
-            this.ExportSelectedButton.TabIndex = 25;
-            this.ExportSelectedButton.Text = "Export Selected";
-            this.ExportSelectedButton.UseVisualStyleBackColor = true;
-            this.ExportSelectedButton.Click += new System.EventHandler(this.ExportSelected_Click);
+            this.SaveButton.Location = new System.Drawing.Point(578, 12);
+            this.SaveButton.Name = "SaveButton";
+            this.SaveButton.Size = new System.Drawing.Size(117, 23);
+            this.SaveButton.TabIndex = 25;
+            this.SaveButton.Text = "Save";
+            this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // QuestInfoForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(788, 333);
-            this.Controls.Add(this.ExportSelectedButton);
-            this.Controls.Add(this.ImportButton);
-            this.Controls.Add(this.ExportButton);
+            this.Controls.Add(this.SaveButton);
             this.Controls.Add(this.PasteMButton);
             this.Controls.Add(this.CopyMButton);
             this.Controls.Add(this.tabControl1);
@@ -491,9 +467,7 @@
         private System.Windows.Forms.Button AddButton;
         private System.Windows.Forms.Button PasteMButton;
         private System.Windows.Forms.Button CopyMButton;
-        private System.Windows.Forms.Button ExportButton;
-        private System.Windows.Forms.Button ImportButton;
-        private System.Windows.Forms.Button ExportSelectedButton;
+        private System.Windows.Forms.Button SaveButton;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Button OpenQButton;
         private System.Windows.Forms.TextBox QFileNameTextBox;

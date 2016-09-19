@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -40,7 +41,106 @@ namespace Server.MirDatabase
         
         public NPCInfo()
         { }
-        public NPCInfo(BinaryReader reader)
+
+        public NPCInfo(MySqlDataReader readerNPCInfo)
+            {
+
+                Index = Convert.ToInt32(readerNPCInfo["IndexID"]);
+                MapIndex = Convert.ToInt32(readerNPCInfo["MapIndex"]);
+
+                //  int count = reader.ReadInt32();
+                //  for (int i = 0; i < count; i++)
+                //      CollectQuestIndexes.Add(reader.ReadInt32());
+
+                //  count = reader.ReadInt32();
+                //  for (int i = 0; i < count; i++)
+                //     FinishQuestIndexes.Add(reader.ReadInt32());
+
+
+            FileName = Convert.ToString(readerNPCInfo["FileName"]);
+            Name = Convert.ToString(readerNPCInfo["Name"]);
+
+            Location = new Point(Convert.ToInt32(readerNPCInfo["Location_X"]), Convert.ToInt32(readerNPCInfo["Location_Y"]));
+            Image = Convert.ToByte(readerNPCInfo["Image"]);
+
+            Rate = Convert.ToUInt16(readerNPCInfo["Rate"]);
+
+                TimeVisible = Convert.ToBoolean(readerNPCInfo["TimeVisible"]);
+                HourStart = Convert.ToByte(readerNPCInfo["HourStart"]);
+                MinuteStart = Convert.ToByte(readerNPCInfo["MinuteStart"]);
+                HourEnd = Convert.ToByte(readerNPCInfo["HourEnd"]);
+                MinuteEnd = Convert.ToByte(readerNPCInfo["MinuteEnd"]);
+                MinLev = Convert.ToInt16(readerNPCInfo["MinLev"]);
+                MaxLev = Convert.ToInt16(readerNPCInfo["MaxLev"]);
+                DayofWeek = Convert.ToString(readerNPCInfo["DayofWeek"]);
+                ClassRequired = Convert.ToString(readerNPCInfo["ClassRequired"]);
+                Conquest = Convert.ToInt32(readerNPCInfo["Conquest"]);
+              
+            }
+
+        public static void SaveNPCInfoDB(NPCInfo InfoNPCList)
+            {
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+                string sqlCommand;
+                string query = "SELECT COUNT(*) FROM  " + Settings.DBServer + ".npcinfo WHERE IndexID = " + InfoNPCList.Index;
+                using (var cmd = new MySqlCommand(query, connection))
+                    {
+                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (count == 0)
+                        {
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".npcinfo (MapIndex, IndexID, FileName, Name, Location_X, Location_Y, Rate, Image, HourStart, MinuteStart, HourEnd, MinuteEnd, TimeVisible, IsDefault, MinLev, MaxLev, DayofWeek, ClassRequired, Conquest) VALUES (@MapIndex, @IndexID, @FileName, @Name, @Location_X, @Location_Y, @Rate, @Image, @HourStart, @MinuteStart, @HourEnd, @MinuteEnd, @TimeVisible, @IsDefault, @MinLev, @MaxLev, @DayofWeek, @ClassRequired, @Conquest)";
+                        }
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".npcinfo SET MapIndex = @MapIndex, FileName = @FileName, IndexID = @IndexID, Name = @Name, Location_X = @Location_X, Location_Y = @Location_Y, Rate = @Rate, Image = @Image,  HourStart = @HourStart, MinuteStart = @MinuteStart, HourEnd = @HourEnd, MinuteEnd = @MinuteEnd, TimeVisible = @TimeVisible, IsDefault = @IsDefault, MinLev = @MinLev, MaxLev = @MaxLev,  DayofWeek = @DayofWeek, ClassRequired = @ClassRequired, Conquest = @Conquest WHERE IndexID = " + InfoNPCList.Index;
+                        }
+                    }
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@MapIndex", InfoNPCList.MapIndex);
+                    command.Parameters.AddWithValue("@FileName", InfoNPCList.FileName);
+                    command.Parameters.AddWithValue("@IndexID", InfoNPCList.Index);
+                    command.Parameters.AddWithValue("@Name", InfoNPCList.Name);
+                    command.Parameters.AddWithValue("@Location_X", InfoNPCList.Location.X);
+                    command.Parameters.AddWithValue("@Location_Y", InfoNPCList.Location.Y);
+                    command.Parameters.AddWithValue("@Rate", InfoNPCList.Rate);
+                    command.Parameters.AddWithValue("@Image", InfoNPCList.Image);
+                    command.Parameters.AddWithValue("@HourStart", InfoNPCList.HourStart);
+                    command.Parameters.AddWithValue("@MinuteStart", InfoNPCList.MinuteStart);
+                    command.Parameters.AddWithValue("@HourEnd", InfoNPCList.HourEnd);
+                    command.Parameters.AddWithValue("@MinuteEnd", InfoNPCList.MinuteEnd);
+                    command.Parameters.AddWithValue("@TimeVisible", InfoNPCList.TimeVisible);
+                    command.Parameters.AddWithValue("@IsDefault", InfoNPCList.IsDefault);
+                    command.Parameters.AddWithValue("@MinLev", InfoNPCList.MinLev);
+                    command.Parameters.AddWithValue("@MaxLev", InfoNPCList.MaxLev);
+                    command.Parameters.AddWithValue("@DayofWeek", InfoNPCList.DayofWeek);
+                    command.Parameters.AddWithValue("@ClassRequired", InfoNPCList.ClassRequired);
+                    command.Parameters.AddWithValue("@Conquest", InfoNPCList.Conquest);
+
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
+            }
+
+       public NPCInfo(BinaryReader reader)
         {
             if (Envir.LoadVersion > 33)
             {

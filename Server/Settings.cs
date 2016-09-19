@@ -58,6 +58,13 @@ namespace Server
                              RelogDelay = 50,
                              MaxIP = 5;
 
+        //DBMySql
+        public static string ServerIP = "127.0.0.1";
+        public static string Uid = "root",
+                             Pwd = "",
+                             DBServer = "crystal_db",
+                             DBAccount = "crystal_account";
+        public static bool SaveMysql = true;
 
         //Permission
         public static bool AllowNewAccount = true,
@@ -288,6 +295,14 @@ namespace Server
             MaxUser = Reader.ReadUInt16("Network", "MaxUser", MaxUser);
             MaxIP = Reader.ReadUInt16("Network", "MaxIP", MaxIP);
 
+            //DBMySql
+            ServerIP = Reader.ReadString("DBMySql", "ServerIP", ServerIP);
+            Uid = Reader.ReadString("DBMySql", "Uid", Uid);
+            Pwd = Reader.ReadString("DBMySql", "Pwd", Pwd);
+            DBServer = Reader.ReadString("DBMySql", "DBServer", DBServer);
+            DBAccount = Reader.ReadString("DBMySql", "DBAccount", DBAccount);
+            SaveMysql = Reader.ReadBoolean("DBMySql", "SaveMysql", SaveMysql);
+
             //Permission
             AllowNewAccount = Reader.ReadBoolean("Permission", "AllowNewAccount", AllowNewAccount);
             AllowChangePassword = Reader.ReadBoolean("Permission", "AllowChangePassword", AllowChangePassword);
@@ -485,6 +500,14 @@ namespace Server
             Reader.Write("Network", "MaxUser", MaxUser);
             Reader.Write("Network", "MaxIP", MaxIP);
 
+            //DBMySql
+            Reader.Write("DBMySql", "ServerIP", ServerIP);
+            Reader.Write("DBMySql", "Uid", Uid);
+            Reader.Write("DBMySql", "Pwd", Pwd);
+            Reader.Write("DBMySql", "DBServer", DBServer);
+            Reader.Write("DBMySql", "DBAccount", DBAccount);
+            Reader.Write("DBMySql", "SaveMysql", SaveMysql);
+            
             //Permission
             Reader.Write("Permission", "AllowNewAccount", AllowNewAccount);
             Reader.Write("Permission", "AllowChangePassword", AllowChangePassword);
@@ -948,7 +971,7 @@ namespace Server
             if (!File.Exists(ConfigPath + @".\GuildSettings.ini"))
             {
                 Guild_CreationCostList.Add(new ItemVolume(){Amount = 1000000});
-                Guild_CreationCostList.Add(new ItemVolume(){ItemName = "WoomaHorn",Amount = 1});
+                Guild_CreationCostList.Add(new ItemVolume(){ItemName = "WoomaHorn",Amount = 0});
                 return;
             }
             InIReader reader = new InIReader(ConfigPath + @".\GuildSettings.ini");

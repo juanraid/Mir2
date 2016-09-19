@@ -118,6 +118,8 @@ namespace Server
             this.RemoveMButton = new System.Windows.Forms.Button();
             this.AddMButton = new System.Windows.Forms.Button();
             this.MovementInfoPanel = new System.Windows.Forms.Panel();
+            this.label25 = new System.Windows.Forms.Label();
+            this.ConquestComboBox = new System.Windows.Forms.ComboBox();
             this.NeedMoveMCheckBox = new System.Windows.Forms.CheckBox();
             this.NeedHoleMCheckBox = new System.Windows.Forms.CheckBox();
             this.label22 = new System.Windows.Forms.Label();
@@ -149,14 +151,9 @@ namespace Server
             this.MapInfoListBox = new System.Windows.Forms.ListBox();
             this.PasteMapButton = new System.Windows.Forms.Button();
             this.CopyMapButton = new System.Windows.Forms.Button();
-            this.ImportMapInfoButton = new System.Windows.Forms.Button();
-            this.ExportMapInfoButton = new System.Windows.Forms.Button();
-            this.ImportMongenButton = new System.Windows.Forms.Button();
-            this.ExportMongenButton = new System.Windows.Forms.Button();
             this.VisualizerButton = new System.Windows.Forms.Button();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.ConquestComboBox = new System.Windows.Forms.ComboBox();
-            this.label25 = new System.Windows.Forms.Label();
+            this.SaveButton = new System.Windows.Forms.Button();
             this.MapTabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage6.SuspendLayout();
@@ -181,10 +178,10 @@ namespace Server
             this.MapTabs.Controls.Add(this.tabPage2);
             this.MapTabs.Controls.Add(this.tabPage4);
             this.MapTabs.Controls.Add(this.tabPage7);
-            this.MapTabs.Location = new System.Drawing.Point(207, 62);
+            this.MapTabs.Location = new System.Drawing.Point(204, 41);
             this.MapTabs.Name = "MapTabs";
             this.MapTabs.SelectedIndex = 0;
-            this.MapTabs.Size = new System.Drawing.Size(540, 273);
+            this.MapTabs.Size = new System.Drawing.Size(540, 329);
             this.MapTabs.TabIndex = 8;
             // 
             // tabPage1
@@ -1038,7 +1035,7 @@ namespace Server
             this.tabPage4.Location = new System.Drawing.Point(4, 22);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage4.Size = new System.Drawing.Size(532, 247);
+            this.tabPage4.Size = new System.Drawing.Size(532, 303);
             this.tabPage4.TabIndex = 3;
             this.tabPage4.Text = "Movements";
             this.tabPage4.UseVisualStyleBackColor = true;
@@ -1085,8 +1082,27 @@ namespace Server
             this.MovementInfoPanel.Enabled = false;
             this.MovementInfoPanel.Location = new System.Drawing.Point(239, 35);
             this.MovementInfoPanel.Name = "MovementInfoPanel";
-            this.MovementInfoPanel.Size = new System.Drawing.Size(256, 205);
+            this.MovementInfoPanel.Size = new System.Drawing.Size(256, 265);
             this.MovementInfoPanel.TabIndex = 14;
+            // 
+            // label25
+            // 
+            this.label25.AutoSize = true;
+            this.label25.Location = new System.Drawing.Point(3, 171);
+            this.label25.Name = "label25";
+            this.label25.Size = new System.Drawing.Size(55, 13);
+            this.label25.TabIndex = 20;
+            this.label25.Text = "Conquest:";
+            // 
+            // ConquestComboBox
+            // 
+            this.ConquestComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.ConquestComboBox.FormattingEnabled = true;
+            this.ConquestComboBox.Location = new System.Drawing.Point(64, 168);
+            this.ConquestComboBox.Name = "ConquestComboBox";
+            this.ConquestComboBox.Size = new System.Drawing.Size(182, 21);
+            this.ConquestComboBox.TabIndex = 19;
+            this.ConquestComboBox.SelectedIndexChanged += new System.EventHandler(this.ConquestComboBox_SelectedIndexChanged);
             // 
             // NeedMoveMCheckBox
             // 
@@ -1207,10 +1223,10 @@ namespace Server
             this.MovementInfoListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
             this.MovementInfoListBox.FormattingEnabled = true;
-            this.MovementInfoListBox.Location = new System.Drawing.Point(6, 35);
+            this.MovementInfoListBox.Location = new System.Drawing.Point(3, 35);
             this.MovementInfoListBox.Name = "MovementInfoListBox";
             this.MovementInfoListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.MovementInfoListBox.Size = new System.Drawing.Size(227, 173);
+            this.MovementInfoListBox.Size = new System.Drawing.Size(227, 264);
             this.MovementInfoListBox.TabIndex = 13;
             this.MovementInfoListBox.SelectedIndexChanged += new System.EventHandler(this.MovementInfoListBox_SelectedIndexChanged);
             // 
@@ -1354,7 +1370,7 @@ namespace Server
             // 
             // RemoveButton
             // 
-            this.RemoveButton.Location = new System.Drawing.Point(126, 33);
+            this.RemoveButton.Location = new System.Drawing.Point(123, 12);
             this.RemoveButton.Name = "RemoveButton";
             this.RemoveButton.Size = new System.Drawing.Size(75, 23);
             this.RemoveButton.TabIndex = 6;
@@ -1364,7 +1380,7 @@ namespace Server
             // 
             // AddButton
             // 
-            this.AddButton.Location = new System.Drawing.Point(12, 33);
+            this.AddButton.Location = new System.Drawing.Point(9, 12);
             this.AddButton.Name = "AddButton";
             this.AddButton.Size = new System.Drawing.Size(75, 23);
             this.AddButton.TabIndex = 5;
@@ -1377,16 +1393,16 @@ namespace Server
             this.MapInfoListBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
             this.MapInfoListBox.FormattingEnabled = true;
-            this.MapInfoListBox.Location = new System.Drawing.Point(12, 62);
+            this.MapInfoListBox.Location = new System.Drawing.Point(9, 41);
             this.MapInfoListBox.Name = "MapInfoListBox";
             this.MapInfoListBox.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.MapInfoListBox.Size = new System.Drawing.Size(189, 264);
+            this.MapInfoListBox.Size = new System.Drawing.Size(189, 329);
             this.MapInfoListBox.TabIndex = 7;
             this.MapInfoListBox.SelectedIndexChanged += new System.EventHandler(this.MapInfoListBox_SelectedIndexChanged);
             // 
             // PasteMapButton
             // 
-            this.PasteMapButton.Location = new System.Drawing.Point(288, 33);
+            this.PasteMapButton.Location = new System.Drawing.Point(285, 12);
             this.PasteMapButton.Name = "PasteMapButton";
             this.PasteMapButton.Size = new System.Drawing.Size(75, 23);
             this.PasteMapButton.TabIndex = 24;
@@ -1396,56 +1412,16 @@ namespace Server
             // 
             // CopyMapButton
             // 
-            this.CopyMapButton.Location = new System.Drawing.Point(207, 33);
+            this.CopyMapButton.Location = new System.Drawing.Point(204, 12);
             this.CopyMapButton.Name = "CopyMapButton";
             this.CopyMapButton.Size = new System.Drawing.Size(75, 23);
             this.CopyMapButton.TabIndex = 23;
             this.CopyMapButton.Text = "Copy";
             this.CopyMapButton.UseVisualStyleBackColor = true;
             // 
-            // ImportMapInfoButton
-            // 
-            this.ImportMapInfoButton.Location = new System.Drawing.Point(564, 4);
-            this.ImportMapInfoButton.Name = "ImportMapInfoButton";
-            this.ImportMapInfoButton.Size = new System.Drawing.Size(87, 23);
-            this.ImportMapInfoButton.TabIndex = 25;
-            this.ImportMapInfoButton.Text = "Import MapInfo";
-            this.ImportMapInfoButton.UseVisualStyleBackColor = true;
-            this.ImportMapInfoButton.Click += new System.EventHandler(this.ImportMapInfoButton_Click);
-            // 
-            // ExportMapInfoButton
-            // 
-            this.ExportMapInfoButton.Location = new System.Drawing.Point(564, 33);
-            this.ExportMapInfoButton.Name = "ExportMapInfoButton";
-            this.ExportMapInfoButton.Size = new System.Drawing.Size(87, 23);
-            this.ExportMapInfoButton.TabIndex = 26;
-            this.ExportMapInfoButton.Text = "Export MapInfo";
-            this.ExportMapInfoButton.UseVisualStyleBackColor = true;
-            this.ExportMapInfoButton.Click += new System.EventHandler(this.ExportMapInfoButton_Click);
-            // 
-            // ImportMongenButton
-            // 
-            this.ImportMongenButton.Location = new System.Drawing.Point(657, 3);
-            this.ImportMongenButton.Name = "ImportMongenButton";
-            this.ImportMongenButton.Size = new System.Drawing.Size(86, 23);
-            this.ImportMongenButton.TabIndex = 27;
-            this.ImportMongenButton.Text = "Import Spawns";
-            this.ImportMongenButton.UseVisualStyleBackColor = true;
-            this.ImportMongenButton.Click += new System.EventHandler(this.ImportMonGenButton_Click);
-            // 
-            // ExportMongenButton
-            // 
-            this.ExportMongenButton.Location = new System.Drawing.Point(657, 33);
-            this.ExportMongenButton.Name = "ExportMongenButton";
-            this.ExportMongenButton.Size = new System.Drawing.Size(86, 23);
-            this.ExportMongenButton.TabIndex = 28;
-            this.ExportMongenButton.Text = "Export Spawns";
-            this.ExportMongenButton.UseVisualStyleBackColor = true;
-            this.ExportMongenButton.Click += new System.EventHandler(this.ExportMonGenButton_Click);
-            // 
             // VisualizerButton
             // 
-            this.VisualizerButton.Location = new System.Drawing.Point(483, 4);
+            this.VisualizerButton.Location = new System.Drawing.Point(558, 12);
             this.VisualizerButton.Name = "VisualizerButton";
             this.VisualizerButton.Size = new System.Drawing.Size(75, 23);
             this.VisualizerButton.TabIndex = 31;
@@ -1453,35 +1429,23 @@ namespace Server
             this.VisualizerButton.UseVisualStyleBackColor = true;
             this.VisualizerButton.Click += new System.EventHandler(this.VisualizerButton_Click);
             // 
-            // ConquestComboBox
+            // SaveButton
             // 
-            this.ConquestComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.ConquestComboBox.FormattingEnabled = true;
-            this.ConquestComboBox.Location = new System.Drawing.Point(64, 168);
-            this.ConquestComboBox.Name = "ConquestComboBox";
-            this.ConquestComboBox.Size = new System.Drawing.Size(182, 21);
-            this.ConquestComboBox.TabIndex = 19;
-            this.ConquestComboBox.SelectedIndexChanged += new System.EventHandler(this.ConquestComboBox_SelectedIndexChanged);
-            // 
-            // label25
-            // 
-            this.label25.AutoSize = true;
-            this.label25.Location = new System.Drawing.Point(3, 171);
-            this.label25.Name = "label25";
-            this.label25.Size = new System.Drawing.Size(55, 13);
-            this.label25.TabIndex = 20;
-            this.label25.Text = "Conquest:";
+            this.SaveButton.Location = new System.Drawing.Point(650, 12);
+            this.SaveButton.Name = "SaveButton";
+            this.SaveButton.Size = new System.Drawing.Size(87, 23);
+            this.SaveButton.TabIndex = 26;
+            this.SaveButton.Text = "Save";
+            this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // MapInfoForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(759, 336);
+            this.ClientSize = new System.Drawing.Size(759, 385);
             this.Controls.Add(this.VisualizerButton);
-            this.Controls.Add(this.ExportMongenButton);
-            this.Controls.Add(this.ImportMongenButton);
-            this.Controls.Add(this.ExportMapInfoButton);
-            this.Controls.Add(this.ImportMapInfoButton);
+            this.Controls.Add(this.SaveButton);
             this.Controls.Add(this.PasteMapButton);
             this.Controls.Add(this.CopyMapButton);
             this.Controls.Add(this.MapTabs);
@@ -1600,8 +1564,6 @@ namespace Server
         private CheckBox NoEscapeCheckbox;
         private CheckBox NoRandomCheckbox;
         private CheckBox NeedHoleMCheckBox;
-        private Button ImportMapInfoButton;
-        private Button ExportMapInfoButton;
         private Label label19;
         private TextBox MapDarkLighttextBox;
         private TabPage tabPage7;
@@ -1619,8 +1581,6 @@ namespace Server
         private ComboBox MineZoneComboBox;
         private Label label27;
         private Label label33;
-        private Button ImportMongenButton;
-        private Button ExportMongenButton;
         private Button VisualizerButton;
         private CheckBox NeedBridleCheckbox;
         private CheckBox NoMountCheckbox;
@@ -1637,5 +1597,6 @@ namespace Server
         private CheckBox chkRespawnEnableTick;
         private ComboBox ConquestComboBox;
         private Label label25;
-    }
+        private Button SaveButton;
+        }
 }

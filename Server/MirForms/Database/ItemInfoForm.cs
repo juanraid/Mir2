@@ -99,12 +99,14 @@ namespace Server
             if (refreshList)
             {
                 ItemInfoListBox.Items.Clear();
-
+                List<ItemInfo> list = new List<ItemInfo>();
                 for (int i = 0; i < Envir.ItemInfoList.Count; i++)
-                {
+                    {
+                    
                     if (ITypeFilterComboBox.SelectedItem == null ||
                         ITypeFilterComboBox.SelectedIndex == ITypeFilterComboBox.Items.Count - 1 ||
                         Envir.ItemInfoList[i].Type == (ItemType)ITypeFilterComboBox.SelectedItem)
+                        if(Envir.ItemInfoList[i].Name.ToUpper().Contains(FilterItemsTextBox.Text.ToUpper()))
                         ItemInfoListBox.Items.Add(Envir.ItemInfoList[i]);
                 }
             }
@@ -454,13 +456,26 @@ namespace Server
             UpdateInterface(true);
         }
 
+        private void FilterItemsTextBox_TextChanged(object sender, EventArgs e)
+            {
+            UpdateInterface(true);
+            }
+
         private void RemoveButton_Click(object sender, EventArgs e)
         {
             if (_selectedItemInfos.Count == 0) return;
 
             if (MessageBox.Show("Are you sure you want to remove the selected Items?", "Remove Items?", MessageBoxButtons.YesNo) != DialogResult.Yes) return;
 
-            for (int i = 0; i < _selectedItemInfos.Count; i++) Envir.Remove(_selectedItemInfos[i]);
+            for (int i = 0; i < _selectedItemInfos.Count; i++) 
+                {
+                Envir.Remove(_selectedItemInfos[i]);
+
+                string sqlDelete = "DELETE FROM " + Settings.DBServer + ".iteminfo WHERE IndexID = '" + _selectedItemInfos[i].Index + "'";
+
+                Envir.ConnectADB.Delete(sqlDelete);
+
+                }
 
             if (Envir.ItemInfoList.Count == 0) Envir.ItemIndex = 0;
 
@@ -1009,7 +1024,7 @@ namespace Server
 
         private void ItemInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Envir.SaveDB();
+            //Envir.SaveDB();
         }
 
         private void PasteButton_Click(object sender, EventArgs e)
@@ -1044,59 +1059,23 @@ namespace Server
 
         }
 
-        private void ExportAllButton_Click(object sender, EventArgs e)
-        {
-            ExportItems(Envir.ItemInfoList);
-        }
-
-        private void ExportSelectedButton_Click(object sender, EventArgs e)
+        private void SaveButton_Click(object sender, EventArgs e)
         {
             var list = ItemInfoListBox.SelectedItems.Cast<ItemInfo>().ToList();
 
-            ExportItems(list);
-        }
+            if (list.Count == 0)
+                {
+                MessageBox.Show("You have not selected any item.");
+                return;
+                }
+            
+            for (int i = 0; i < list.Count; i++)
+                {
+                Envir.SaveItemDB(list[i]);
+                }
+            MessageBox.Show("Saved item(s).");
 
-        private void ExportItems(IEnumerable<ItemInfo> items)
-        {
-            var itemInfos = items as ItemInfo[] ?? items.ToArray();
-            var list = itemInfos.Select(item => item.ToText()).ToList();
-
-            File.WriteAllLines(ItemListPath, list);
-
-            MessageBox.Show(itemInfos.Count() + " Items have been exported");
-        }
-
-        private void ImportButton_Click(object sender, EventArgs e)
-        {
-            string Path = string.Empty;
-
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Text File|*.txt";
-            ofd.ShowDialog();
-
-            if (ofd.FileName == string.Empty) return;
-
-            Path = ofd.FileName;
-
-            string data;
-            using (var sr = new StreamReader(Path))
-            {
-                data = sr.ReadToEnd();
             }
-
-            var items = data.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-            var count = 0;
-            foreach (var info in items.Select(ItemInfo.FromText).Where(info => info != null))
-            {
-                count++;
-                info.Index = ++Envir.ItemIndex;
-                Envir.ItemInfoList.Add(info);
-            }
-
-            MessageBox.Show(count + " Items have been imported");
-            UpdateInterface(true);
-        }
 
         private void ISetComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -1719,10 +1698,11 @@ namespace Server
         }
 
         private void Gameshop_button_Click(object sender, EventArgs e)
-        {
-            for (int i = 0; i < _selectedItemInfos.Count; i++)
-                Envir.AddToGameShop(_selectedItemInfos[i]);
-            Envir.SaveDB();
+            {
+            for (int i = 0; i < _selectedItemInfos.Count; i++) { 
+            Envir.AddToGameShop(_selectedItemInfos[i]);
+            //Envir.SaveDB();
+            }
         }
 
         private void NoWeddingRingcheckbox_CheckedChanged(object sender, EventArgs e)

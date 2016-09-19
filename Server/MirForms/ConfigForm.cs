@@ -34,9 +34,21 @@ namespace Server
             SafeZoneHealingCheckBox.Checked = Settings.SafeZoneHealing;
 
             SaveDelayTextBox.Text = Settings.SaveDelay.ToString();
+            IPdatabase.Text = Settings.ServerIP;
+            User.Text = Settings.Uid.ToString();
+            Password.Text = Settings.Pwd.ToString();
+            DBServer.Text = Settings.DBServer.ToString();
+            DBAccount.Text = Settings.DBAccount.ToString();
+            SaveMysql.Checked = Settings.SaveMysql;
 
             ServerVersionLabel.Text = Application.ProductVersion;
             DBVersionLabel.Text = MirEnvir.Envir.LoadVersion.ToString() + ((MirEnvir.Envir.LoadVersion < MirEnvir.Envir.Version) ? " (Update needed)" : "");
+
+            if (Settings.SaveMysql)
+                {
+                button1.Visible = false;
+                Remove_button.Visible = false;
+                }
         }
 
         private void ConfigForm_FormClosed(object sender, FormClosedEventArgs e)
@@ -62,6 +74,15 @@ namespace Server
 
             ushort tempshort;
             int tempint;
+
+            IPAddress tempServerIP;
+            if (IPAddress.TryParse(IPdatabase.Text, out tempServerIP))
+                Settings.ServerIP = tempServerIP.ToString();
+            Settings.Uid =  User.Text;
+            Settings.Pwd = Password.Text;
+            Settings.DBServer = DBServer.Text;
+            Settings.DBAccount = DBAccount.Text;
+            Settings.SaveMysql = SaveMysql.Checked;
 
             if (ushort.TryParse(PortTextBox.Text, out tempshort))
                 Settings.Port = tempshort;
@@ -142,5 +163,15 @@ namespace Server
         {
 
         }
-    }
+        
+        private void button1_Click(object sender, EventArgs e)
+            {
+            SMain.Envir.AccountSaveDB();
+            }
+
+        private void Remove_button_Click(object sender, EventArgs e)
+            {
+            SMain.Envir.SaveDB();
+            }
+        }
 }

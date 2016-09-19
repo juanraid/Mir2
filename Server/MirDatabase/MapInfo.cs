@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
@@ -34,6 +35,268 @@ namespace Server.MirDatabase
         {
 
         }
+        public MapInfo(MySqlDataReader readerMapInfo)
+            {
+            Index = Convert.ToInt32(readerMapInfo["IndexID"]);
+            FileName = Convert.ToString(readerMapInfo["FileName"]);
+            Title = Convert.ToString(readerMapInfo["Title"]);
+            NoReconnectMap = Convert.ToString(readerMapInfo["NoReconnectMap"]);
+            MiniMap = Convert.ToUInt16(readerMapInfo["MiniMap"]);
+            BigMap = Convert.ToUInt16(readerMapInfo["BigMap"]);
+            Music = Convert.ToUInt16(readerMapInfo["Music"]);
+            Light = (LightSetting)Convert.ToByte(readerMapInfo["Light"]);
+            MapDarkLight = Convert.ToByte(readerMapInfo["MapDarkLight"]);
+            FireDamage = Convert.ToInt32(readerMapInfo["FireDamage"]);
+            LightningDamage = Convert.ToInt32(readerMapInfo["LightningDamage"]);
+            MineIndex = Convert.ToByte(readerMapInfo["MineIndex"]);
+            NoTeleport = Convert.ToBoolean(readerMapInfo["NoTeleport"]);
+            NoReconnect = Convert.ToBoolean(readerMapInfo["NoReconnect"]);
+            NoRandom = Convert.ToBoolean(readerMapInfo["NoRandom"]);
+            NoEscape = Convert.ToBoolean(readerMapInfo["NoEscape"]);
+            NoRecall = Convert.ToBoolean(readerMapInfo["NoRecall"]);
+            NoDrug = Convert.ToBoolean(readerMapInfo["NoDrug"]);
+            NoPosition = Convert.ToBoolean(readerMapInfo["NoPosition"]);
+            NoFight = Convert.ToBoolean(readerMapInfo["NoFight"]);
+            NoThrowItem = Convert.ToBoolean(readerMapInfo["NoThrowItem"]);
+            NoDropPlayer = Convert.ToBoolean(readerMapInfo["NoDropPlayer"]);
+            NoDropMonster = Convert.ToBoolean(readerMapInfo["NoDropMonster"]);
+            NoNames = Convert.ToBoolean(readerMapInfo["NoNames"]);
+            NoMount = Convert.ToBoolean(readerMapInfo["NoMount"]);
+            NeedBridle = Convert.ToBoolean(readerMapInfo["NeedBridle"]);
+            Fight = Convert.ToBoolean(readerMapInfo["Fight"]);
+            NeedHole = Convert.ToBoolean(readerMapInfo["NeedHole"]);
+            Fire = Convert.ToBoolean(readerMapInfo["Fire"]);
+            Lightning = Convert.ToBoolean(readerMapInfo["Lightning"]);
+            }
+
+        public static void SaveMapInfoDB(MapInfo InfoMapList)
+            {
+            try
+                {
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+
+                string query = "SELECT COUNT(*) FROM " + Settings.DBServer + ".mapinfo WHERE IndexID = '" + InfoMapList.Index + "'";
+                string sqlCommand;
+                using (var cmdd = new MySqlCommand(query, connection))
+                    {
+                    int countt = Convert.ToInt32(cmdd.ExecuteScalar());
+                    if (countt == 0)
+                        {
+                        sqlCommand = "INSERT INTO  " + Settings.DBServer + ".mapinfo (IndexID, Title, FileName, NoReconnectMap, MiniMap, BigMap, Music, Light, MapDarkLight, FireDamage, LightningDamage, MineIndex, NoTeleport, NoReconnect, NoRandom, NoEscape, NoRecall, NoDrug, NoPosition, NoFight, NoThrowItem, NoDropPlayer, NoDropMonster, NoNames, NoMount, NeedBridle, Fight, NeedHole, Fire, Lightning) VALUES (@IndexID, @Title, @FileName, @NoReconnectMap, @MiniMap, @BigMap, @Music, @Light, @MapDarkLight, @FireDamage, @LightningDamage, @MineIndex, @NoTeleport, @NoReconnect, @NoRandom, @NoEscape, @NoRecall, @NoDrug, @NoPosition, @NoFight, @NoThrowItem, @NoDropPlayer, @NoDropMonster, @NoNames, @NoMount, @NeedBridle, @Fight, @NeedHole, @Fire, @Lightning)";
+
+                        }
+                    else
+                        {
+                        sqlCommand = "UPDATE  " + Settings.DBServer + ".mapinfo SET IndexID = @IndexID, Title = @Title, FileName = @FileName, NoReconnectMap = @NoReconnectMap, MiniMap = @MiniMap, BigMap = @BigMap, Music = @Music, Light = @Light, MapDarkLight = @MapDarkLight, FireDamage = @FireDamage, LightningDamage = @LightningDamage, MineIndex = @MineIndex, NoTeleport = @NoTeleport, NoReconnect = @NoReconnect, NoRandom = @NoRandom, NoEscape = @NoEscape, NoRecall = @NoRecall, NoDrug = @NoDrug, NoPosition = @NoPosition, NoFight = @NoFight, NoThrowItem = @NoThrowItem, NoDropPlayer = @NoDropPlayer, NoDropMonster = @NoDropMonster, NoNames = @NoNames, NoMount = @NoMount, NeedBridle = @NeedBridle, Fight = @Fight, NeedHole = @NeedHole, Fire = @Fire, Lightning = @Lightning WHERE IndexID = " + InfoMapList.Index;
+
+                        }
+                    using (var Update = new MySqlCommand(sqlCommand, connection))
+                        {
+                        Update.Parameters.AddWithValue("@IndexID", InfoMapList.Index);
+                        Update.Parameters.AddWithValue("@FileName", InfoMapList.FileName);
+                        Update.Parameters.AddWithValue("@Title", InfoMapList.Title);
+                        Update.Parameters.AddWithValue("@NoReconnectMap", InfoMapList.NoReconnectMap);
+                        Update.Parameters.AddWithValue("@MiniMap", InfoMapList.MiniMap);
+                        Update.Parameters.AddWithValue("@BigMap", InfoMapList.BigMap);
+                        Update.Parameters.AddWithValue("@Music", InfoMapList.Music);
+                        Update.Parameters.AddWithValue("@Light", InfoMapList.Light);
+                        Update.Parameters.AddWithValue("@MapDarkLight", InfoMapList.MapDarkLight);
+                        Update.Parameters.AddWithValue("@FireDamage", InfoMapList.FireDamage);
+                        Update.Parameters.AddWithValue("@LightningDamage", InfoMapList.LightningDamage);
+                        Update.Parameters.AddWithValue("@MineIndex", InfoMapList.MineIndex);
+                        Update.Parameters.AddWithValue("@NoTeleport", InfoMapList.NoTeleport);
+                        Update.Parameters.AddWithValue("@NoReconnect", InfoMapList.NoReconnect);
+                        Update.Parameters.AddWithValue("@NoRandom", InfoMapList.NoRandom);
+                        Update.Parameters.AddWithValue("@NoEscape", InfoMapList.NoEscape);
+                        Update.Parameters.AddWithValue("@NoRecall", InfoMapList.NoRecall);
+                        Update.Parameters.AddWithValue("@NoDrug", InfoMapList.NoDrug);
+                        Update.Parameters.AddWithValue("@NoPosition", InfoMapList.NoPosition);
+                        Update.Parameters.AddWithValue("@NoFight", InfoMapList.NoFight);
+                        Update.Parameters.AddWithValue("@NoThrowItem", InfoMapList.NoThrowItem);
+                        Update.Parameters.AddWithValue("@NoDropPlayer", InfoMapList.NoDropPlayer);
+                        Update.Parameters.AddWithValue("@NoDropMonster", InfoMapList.NoDropMonster);
+                        Update.Parameters.AddWithValue("@NoNames", InfoMapList.NoNames);
+                        Update.Parameters.AddWithValue("@NoMount", InfoMapList.NoMount);
+                        Update.Parameters.AddWithValue("@NeedBridle", InfoMapList.NeedBridle);
+                        Update.Parameters.AddWithValue("@Fight", InfoMapList.Fight);
+                        Update.Parameters.AddWithValue("@NeedHole", InfoMapList.NeedHole);
+                        Update.Parameters.AddWithValue("@Fire", InfoMapList.Fire);
+                        Update.Parameters.AddWithValue("@Lightning", InfoMapList.Lightning);
+
+                        Update.ExecuteNonQuery();
+                        Update.Dispose();
+                        }
+                    cmdd.Dispose();
+                    }
+
+                var sqlCommand_mov = "SELECT COUNT(*) FROM " + Settings.DBServer + ".movements WHERE IndexIDTied =" + InfoMapList.Index;
+
+                using (var cmdd = new MySqlCommand(sqlCommand_mov, connection))
+                    {
+                    int count = Convert.ToInt32(cmdd.ExecuteScalar());
+                    if (count != 0)
+                        {
+                        var query_respanw = "DELETE FROM  " + Settings.DBServer + ".movements WHERE IndexIDTied =" + InfoMapList.Index;
+
+                        using (var Remove = new MySqlCommand(query_respanw, connection))
+                            {
+                            Remove.ExecuteNonQuery();
+                            Remove.Dispose();
+
+                            }
+                        }
+                    cmdd.Dispose();
+                    }
+
+                for (int i = 0; i < InfoMapList.Movements.Count; i++)
+                    {
+
+                    var sqlCommand_respanw = "INSERT INTO  " + Settings.DBServer + ".movements (IndexIDTied, MapIndex, Source_X, Source_Y, Destination_X, Destination_Y, ConquestIndex, NeedHole, NeedMove) VALUES (@IndexIDTied, @MapIndex, @Source_X, @Source_Y, @Destination_X, @Destination_Y, @ConquestIndex, @NeedHole, @NeedMove)";
+
+                    using (var command = new MySqlCommand(sqlCommand_respanw, connection))
+                        {
+                        command.Parameters.AddWithValue("@IndexIDTied", InfoMapList.Index);
+                        command.Parameters.AddWithValue("@MapIndex", InfoMapList.Movements[i].MapIndex);
+                        command.Parameters.AddWithValue("@Source_X", InfoMapList.Movements[i].Source.X);
+                        command.Parameters.AddWithValue("@Source_Y", InfoMapList.Movements[i].Source.Y);
+                        command.Parameters.AddWithValue("@Destination_X", InfoMapList.Movements[i].Destination.X);
+                        command.Parameters.AddWithValue("@Destination_Y", InfoMapList.Movements[i].Destination.Y);
+                        command.Parameters.AddWithValue("@ConquestIndex", InfoMapList.Movements[i].ConquestIndex);
+                        command.Parameters.AddWithValue("@NeedHole", InfoMapList.Movements[i].NeedHole);
+                        command.Parameters.AddWithValue("@NeedMove", InfoMapList.Movements[i].NeedMove);
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+                    }
+
+                var sqlCommand_respanw_check = "SELECT COUNT(*) FROM " + Settings.DBServer + ".respawnInfo WHERE MapRespawnIndex =" + InfoMapList.Index;
+
+                using (var cmdd = new MySqlCommand(sqlCommand_respanw_check, connection))
+                    {
+                    int count = Convert.ToInt32(cmdd.ExecuteScalar());
+                    if (count != 0)
+                        {
+                        var query_respanw = "DELETE FROM  " + Settings.DBServer + ".respawnInfo WHERE MapRespawnIndex =" + InfoMapList.Index;
+
+                        using (var Remove = new MySqlCommand(query_respanw, connection))
+                            {
+                            Remove.ExecuteNonQuery();
+                            Remove.Dispose();
+
+                            }
+                        }
+                    cmdd.Dispose();
+                    }
+
+                for (int i = 0; i < InfoMapList.Respawns.Count; i++)
+                    {
+                    var sqlCommand_respanw = "INSERT INTO  " + Settings.DBServer + ".respawnInfo (MapRespawnIndex, RespawnIndex, MonsterIndex, Location_X, Location_Y, RoutePath, Direction, SaveRespawnTime, Count, Spread, Delay, RandomDelay, RespawnTicks) VALUES (@MapRespawnIndex, @RespawnIndex, @MonsterIndex, @Location_X, @Location_Y, @RoutePath, @Direction, @SaveRespawnTime, @Count, @Spread, @Delay, @RandomDelay, @RespawnTicks)";
+
+                    using (var command = new MySqlCommand(sqlCommand_respanw, connection))
+                        {
+                        command.Parameters.AddWithValue("@MapRespawnIndex", InfoMapList.Index);
+                        command.Parameters.AddWithValue("@RespawnIndex", InfoMapList.Respawns[i].RespawnIndex);
+                        command.Parameters.AddWithValue("@MonsterIndex", InfoMapList.Respawns[i].MonsterIndex);
+                        command.Parameters.AddWithValue("@Location_X", InfoMapList.Respawns[i].Location.X);
+                        command.Parameters.AddWithValue("@Location_Y", InfoMapList.Respawns[i].Location.Y);
+                        command.Parameters.AddWithValue("@RoutePath", InfoMapList.Respawns[i].RoutePath);
+                        command.Parameters.AddWithValue("@Direction", InfoMapList.Respawns[i].Direction);
+                        command.Parameters.AddWithValue("@SaveRespawnTime", InfoMapList.Respawns[i].SaveRespawnTime);
+                        command.Parameters.AddWithValue("@Count", InfoMapList.Respawns[i].Count);
+                        command.Parameters.AddWithValue("@Spread", InfoMapList.Respawns[i].Spread);
+                        command.Parameters.AddWithValue("@Delay", InfoMapList.Respawns[i].Delay);
+                        command.Parameters.AddWithValue("@RandomDelay", InfoMapList.Respawns[i].RandomDelay);
+                        command.Parameters.AddWithValue("@RespawnTicks", InfoMapList.Respawns[i].RespawnTicks);
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+                    }
+
+
+                var sqlCommand_safe_check = "SELECT COUNT(*) FROM " + Settings.DBServer + ".safezoneinfo WHERE SafeMapIndex =" + InfoMapList.Index;
+
+                using (var cmdd = new MySqlCommand(sqlCommand_safe_check, connection))
+                    {
+                    int count = Convert.ToInt32(cmdd.ExecuteScalar());
+                    if (count != 0)
+                        {
+                        var query_respanw = "DELETE FROM  " + Settings.DBServer + ".safezoneinfo WHERE SafeMapIndex =" + InfoMapList.Index;
+
+                        using (var Remove = new MySqlCommand(query_respanw, connection))
+                            {
+                            Remove.ExecuteNonQuery();
+                            Remove.Dispose();
+
+                            }
+                        }
+                    cmdd.Dispose();
+                    }
+
+                for (int i = 0; i < InfoMapList.SafeZones.Count; i++)
+                    {
+                    var sqlCommand_respanw = "INSERT INTO  " + Settings.DBServer + ".safezoneinfo (SafeMapIndex, Size, StartPoint, Location_X, Location_Y) VALUES (@SafeMapIndex, @Size, @StartPoint, @Location_X, @Location_Y)";
+
+                    using (var command = new MySqlCommand(sqlCommand_respanw, connection))
+                        {
+                        command.Parameters.AddWithValue("@SafeMapIndex", InfoMapList.Index);
+                        command.Parameters.AddWithValue("@Size", InfoMapList.SafeZones[i].Size);
+                        command.Parameters.AddWithValue("@StartPoint", InfoMapList.SafeZones[i].StartPoint);
+                        command.Parameters.AddWithValue("@Location_X", InfoMapList.SafeZones[i].Location.X);
+                        command.Parameters.AddWithValue("@Location_Y", InfoMapList.SafeZones[i].Location.Y);
+
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+                    }
+
+                var sqlCommand_mine_check = "SELECT COUNT(*) FROM " + Settings.DBServer + ".minezone WHERE MapMineIndex =" + InfoMapList.Index;
+
+                using (var cmdd = new MySqlCommand(sqlCommand_mine_check, connection))
+                    {
+                    int count = Convert.ToInt32(cmdd.ExecuteScalar());
+                    if (count != 0)
+                        {
+                        var query_respanw = "DELETE FROM  " + Settings.DBServer + ".minezone WHERE MapMineIndex =" + InfoMapList.Index;
+
+                        using (var Remove = new MySqlCommand(query_respanw, connection))
+                            {
+                            Remove.ExecuteNonQuery();
+                            Remove.Dispose();
+
+                            }
+                        }
+                    cmdd.Dispose();
+                    }
+
+                for (int i = 0; i < InfoMapList.MineZones.Count; i++)
+                    {
+                    var sqlCommand_respanw = "INSERT INTO  " + Settings.DBServer + ".minezone (MapMineIndex, Size, Mine, Location_X, Location_Y) VALUES (@MapMineIndex, @Size, @Mine, @Location_X, @Location_Y)";
+
+                    using (var command = new MySqlCommand(sqlCommand_respanw, connection))
+                        {
+                        command.Parameters.AddWithValue("@MapMineIndex", InfoMapList.Index);
+                        command.Parameters.AddWithValue("@Size", InfoMapList.MineZones[i].Size);
+                        command.Parameters.AddWithValue("@Mine", InfoMapList.MineZones[i].Mine);
+                        command.Parameters.AddWithValue("@Location_X", InfoMapList.MineZones[i].Location.X);
+                        command.Parameters.AddWithValue("@Location_Y", InfoMapList.MineZones[i].Location.Y);
+
+                        command.ExecuteNonQuery();
+                        command.Dispose();
+                        }
+                    }
+
+                connection.Close();
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+            }
 
         public MapInfo(BinaryReader reader)
         {

@@ -89,8 +89,9 @@ namespace Server
             this.gemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.conquestToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.respawnsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.InterfaceTimer = new System.Windows.Forms.Timer(this.components);
             this.monsterTunerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.InterfaceTimer = new System.Windows.Forms.Timer(this.components);
+            this.accountDBToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.MainTabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -324,7 +325,8 @@ namespace Server
             this.controlToolStripMenuItem,
             this.accountToolStripMenuItem,
             this.databaseFormsToolStripMenuItem,
-            this.configToolStripMenuItem1});
+            this.configToolStripMenuItem1,
+            this.accountDBToolStripMenuItem});
             this.MainMenu.Location = new System.Drawing.Point(0, 0);
             this.MainMenu.Name = "MainMenu";
             this.MainMenu.Size = new System.Drawing.Size(485, 24);
@@ -574,17 +576,24 @@ namespace Server
             this.respawnsToolStripMenuItem.Text = "SpawnTick";
             this.respawnsToolStripMenuItem.Click += new System.EventHandler(this.respawnsToolStripMenuItem_Click);
             // 
-            // InterfaceTimer
-            // 
-            this.InterfaceTimer.Enabled = true;
-            this.InterfaceTimer.Tick += new System.EventHandler(this.InterfaceTimer_Tick);
-            // 
             // monsterTunerToolStripMenuItem
             // 
             this.monsterTunerToolStripMenuItem.Name = "monsterTunerToolStripMenuItem";
             this.monsterTunerToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.monsterTunerToolStripMenuItem.Text = "Monster Tuner";
             this.monsterTunerToolStripMenuItem.Click += new System.EventHandler(this.monsterTunerToolStripMenuItem_Click);
+            // 
+            // InterfaceTimer
+            // 
+            this.InterfaceTimer.Enabled = true;
+            this.InterfaceTimer.Tick += new System.EventHandler(this.InterfaceTimer_Tick);
+            // 
+            // accountDBToolStripMenuItem
+            // 
+            this.accountDBToolStripMenuItem.Name = "accountDBToolStripMenuItem";
+            this.accountDBToolStripMenuItem.Size = new System.Drawing.Size(82, 20);
+            this.accountDBToolStripMenuItem.Text = "Account DB";
+            this.accountDBToolStripMenuItem.Click += new System.EventHandler(this.accountDBToolStripMenuItem_Click);
             // 
             // SMain
             // 
@@ -679,6 +688,7 @@ namespace Server
         private ToolStripMenuItem rebootServerToolStripMenuItem;
         private ToolStripMenuItem respawnsToolStripMenuItem;
         private ToolStripMenuItem monsterTunerToolStripMenuItem;
-    }
+        private ToolStripMenuItem accountDBToolStripMenuItem;
+        }
 }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
@@ -7,14 +8,15 @@ using Server.MirEnvir;
 using Server.MirObjects;
 using C = ClientPackets;
 using S = ServerPackets;
+using MySql.Data.MySqlClient;
 using System.Linq;
 
 namespace Server.MirNetwork
-{
+    {
     public enum GameStage { None, Login, Select, Game, Disconnected }
 
     public class MirConnection
-    {
+        {
         public readonly int SessionID;
         public readonly string IPAddress;
 
@@ -24,18 +26,20 @@ namespace Server.MirNetwork
         private ConcurrentQueue<Packet> _receiveList;
         private Queue<Packet> _sendList, _retryList;
 
+        List<UserItem> CheckStore = new List<UserItem>();
+
         private bool _disconnecting;
         public bool Connected;
         public bool Disconnecting
-        {
+            {
             get { return _disconnecting; }
             set
-            {
+                {
                 if (_disconnecting == value) return;
                 _disconnecting = value;
                 TimeOutTime = SMain.Envir.Time + 500;
+                }
             }
-        }
         public readonly long TimeConnected;
         public long TimeDisconnected, TimeOutTime;
 
@@ -49,25 +53,25 @@ namespace Server.MirNetwork
 
 
         public MirConnection(int sessionID, TcpClient client)
-        {
+            {
             SessionID = sessionID;
             IPAddress = client.Client.RemoteEndPoint.ToString().Split(':')[0];
 
             int connCount = 0;
             for (int i = 0; i < SMain.Envir.Connections.Count; i++)
-            {
+                {
                 MirConnection conn = SMain.Envir.Connections[i];
                 if (conn.IPAddress == IPAddress && conn.Connected)
-                {
+                    {
                     connCount++;
 
                     if (connCount >= Settings.MaxIP)
-                    {
+                        {
                         SMain.EnqueueDebugging(IPAddress + ", Maximum connections reached.");
                         conn.SendDisconnect(5);
+                        }
                     }
                 }
-            }
 
             SMain.Enqueue(IPAddress + ", Connected.");
 
@@ -84,44 +88,44 @@ namespace Server.MirNetwork
 
             Connected = true;
             BeginReceive();
-        }
+            }
 
         private void BeginReceive()
-        {
+            {
             if (!Connected) return;
 
             byte[] rawBytes = new byte[8 * 1024];
 
             try
-            {
+                {
                 _client.Client.BeginReceive(rawBytes, 0, rawBytes.Length, SocketFlags.None, ReceiveData, rawBytes);
-            }
+                }
             catch
-            {
+                {
                 Disconnecting = true;
+                }
             }
-        }
         private void ReceiveData(IAsyncResult result)
-        {
+            {
             if (!Connected) return;
 
             int dataRead;
 
             try
-            {
+                {
                 dataRead = _client.Client.EndReceive(result);
-            }
+                }
             catch
-            {
+                {
                 Disconnecting = true;
                 return;
-            }
+                }
 
             if (dataRead == 0)
-            {
+                {
                 Disconnecting = true;
                 return;
-            }
+                }
 
             byte[] rawBytes = result.AsyncState as byte[];
 
@@ -135,82 +139,82 @@ namespace Server.MirNetwork
                 _receiveList.Enqueue(p);
 
             BeginReceive();
-        }
+            }
         private void BeginSend(List<byte> data)
-        {
+            {
             if (!Connected || data.Count == 0) return;
 
             //Interlocked.Add(ref Network.Sent, data.Count);
 
             try
-            {
+                {
                 _client.Client.BeginSend(data.ToArray(), 0, data.Count, SocketFlags.None, SendData, Disconnecting);
-            }
+                }
             catch
-            {
+                {
                 Disconnecting = true;
+                }
             }
-        }
         private void SendData(IAsyncResult result)
-        {
+            {
             try
-            {
+                {
                 _client.Client.EndSend(result);
-            }
+                }
             catch
-            { }
-        }
-        
-        public void Enqueue(Packet p)
-        {
-            if (_sendList != null && p != null)
-                _sendList.Enqueue(p);
-        }
-        
-        public void Process()
-        {
-            if (_client == null || !_client.Connected)
-            {
-                Disconnect(20);
-                return;
+                { }
             }
 
-            while (!_receiveList.IsEmpty && !Disconnecting)
+        public void Enqueue(Packet p)
             {
+            if (_sendList != null && p != null)
+                _sendList.Enqueue(p);
+            }
+
+        public void Process()
+            {
+            if (_client == null || !_client.Connected)
+                {
+                Disconnect(20);
+                return;
+                }
+
+            while (!_receiveList.IsEmpty && !Disconnecting)
+                {
                 Packet p;
                 if (!_receiveList.TryDequeue(out p)) continue;
                 TimeOutTime = SMain.Envir.Time + Settings.TimeOut;
                 ProcessPacket(p);
-            }
+                }
 
             while (_retryList.Count > 0)
                 _receiveList.Enqueue(_retryList.Dequeue());
 
             if (SMain.Envir.Time > TimeOutTime)
-            {
+                {
                 Disconnect(21);
                 return;
-            }
+                }
 
             if (_sendList == null || _sendList.Count <= 0) return;
 
             List<byte> data = new List<byte>();
             while (_sendList.Count > 0)
-            {
+                {
                 Packet p = _sendList.Dequeue();
                 data.AddRange(p.GetPacketBytes());
-            }
+                }
 
             BeginSend(data);
-        }
+            }
         private void ProcessPacket(Packet p)
-        {
+            {
             if (p == null || Disconnecting) return;
 
             switch (p.Index)
-            {
+                {
                 case (short)ClientPacketIds.ClientVersion:
-                    ClientVersion((C.ClientVersion) p);
+                    ClientVersion((C.ClientVersion)p);
                     break;
                 case (short)ClientPacketIds.Disconnect:
                     Disconnect(22);
@@ -219,43 +223,43 @@ namespace Server.MirNetwork
                     ClientKeepAlive((C.KeepAlive)p);
                     break;
                 case (short)ClientPacketIds.NewAccount:
-                    NewAccount((C.NewAccount) p);
+                    NewAccount((C.NewAccount)p);
                     break;
                 case (short)ClientPacketIds.ChangePassword:
-                    ChangePassword((C.ChangePassword) p);
+                    ChangePassword((C.ChangePassword)p);
                     break;
                 case (short)ClientPacketIds.Login:
-                    Login((C.Login) p);
+                    Login((C.Login)p);
                     break;
                 case (short)ClientPacketIds.NewCharacter:
-                    NewCharacter((C.NewCharacter) p);
+                    NewCharacter((C.NewCharacter)p);
                     break;
                 case (short)ClientPacketIds.DeleteCharacter:
-                    DeleteCharacter((C.DeleteCharacter) p);
+                    DeleteCharacter((C.DeleteCharacter)p);
                     break;
                 case (short)ClientPacketIds.StartGame:
-                    StartGame((C.StartGame) p);
+                    StartGame((C.StartGame)p);
                     break;
                 case (short)ClientPacketIds.LogOut:
                     LogOut();
                     break;
                 case (short)ClientPacketIds.Turn:
-                    Turn((C.Turn) p);
+                    Turn((C.Turn)p);
                     break;
                 case (short)ClientPacketIds.Walk:
-                    Walk((C.Walk) p);
+                    Walk((C.Walk)p);
                     break;
                 case (short)ClientPacketIds.Run:
-                    Run((C.Run) p);
+                    Run((C.Run)p);
                     break;
                 case (short)ClientPacketIds.Chat:
-                    Chat((C.Chat) p);
+                    Chat((C.Chat)p);
                     break;
                 case (short)ClientPacketIds.MoveItem:
-                    MoveItem((C.MoveItem) p);
+                    MoveItem((C.MoveItem)p);
                     break;
                 case (short)ClientPacketIds.StoreItem:
-                    StoreItem((C.StoreItem) p);
+                    StoreItem((C.StoreItem)p);
                     break;
                 case (short)ClientPacketIds.DepositRefineItem:
                     DepositRefineItem((C.DepositRefineItem)p);
@@ -282,31 +286,31 @@ namespace Server.MirNetwork
                     RetrieveTradeItem((C.RetrieveTradeItem)p);
                     break;
                 case (short)ClientPacketIds.TakeBackItem:
-                    TakeBackItem((C.TakeBackItem) p);
+                    TakeBackItem((C.TakeBackItem)p);
                     break;
                 case (short)ClientPacketIds.MergeItem:
-                    MergeItem((C.MergeItem) p);
+                    MergeItem((C.MergeItem)p);
                     break;
                 case (short)ClientPacketIds.EquipItem:
-                    EquipItem((C.EquipItem) p);
+                    EquipItem((C.EquipItem)p);
                     break;
                 case (short)ClientPacketIds.RemoveItem:
-                    RemoveItem((C.RemoveItem) p);
+                    RemoveItem((C.RemoveItem)p);
                     break;
                 case (short)ClientPacketIds.RemoveSlotItem:
                     RemoveSlotItem((C.RemoveSlotItem)p);
                     break;
                 case (short)ClientPacketIds.SplitItem:
-                    SplitItem((C.SplitItem) p);
+                    SplitItem((C.SplitItem)p);
                     break;
                 case (short)ClientPacketIds.UseItem:
-                    UseItem((C.UseItem) p);
+                    UseItem((C.UseItem)p);
                     break;
                 case (short)ClientPacketIds.DropItem:
-                    DropItem((C.DropItem) p);
+                    DropItem((C.DropItem)p);
                     break;
                 case (short)ClientPacketIds.DropGold:
-                    DropGold((C.DropGold) p);
+                    DropGold((C.DropGold)p);
                     break;
                 case (short)ClientPacketIds.PickUp:
                     PickUp();
@@ -387,7 +391,7 @@ namespace Server.MirNetwork
                     MarketRefresh();
                     return;
                 case (short)ClientPacketIds.MarketPage:
-                    MarketPage((C.MarketPage) p);
+                    MarketPage((C.MarketPage)p);
                     return;
                 case (short)ClientPacketIds.MarketBuy:
                     MarketBuy((C.MarketBuy)p);
@@ -492,7 +496,7 @@ namespace Server.MirNetwork
                     AcceptReincarnation();
                     break;
                 case (short)ClientPacketIds.CancelReincarnation:
-                     CancelReincarnation();
+                    CancelReincarnation();
                     break;
                 case (short)ClientPacketIds.CombineItem:
                     CombineItem((C.CombineItem)p);
@@ -552,11 +556,11 @@ namespace Server.MirNetwork
                     RemoveFriend((C.RemoveFriend)p);
                     break;
                 case (short)ClientPacketIds.RefreshFriends:
-                    {
+                        {
                         if (Stage != GameStage.Game) return;
                         Player.GetFriends();
                         break;
-                    }
+                        }
                 case (short)ClientPacketIds.AddMemo:
                     AddMemo((C.AddMemo)p);
                     break;
@@ -581,27 +585,27 @@ namespace Server.MirNetwork
                 default:
                     SMain.Enqueue(string.Format("Invalid packet received. Index : {0}", p.Index));
                     break;
+                }
             }
-        }
 
         public void SoftDisconnect(byte reason)
-        {
+            {
             Stage = GameStage.Disconnected;
             TimeDisconnected = SMain.Envir.Time;
-            
+
             lock (Envir.AccountLock)
-            {
+                {
                 if (Player != null)
                     Player.StopGame(reason);
 
                 if (Account != null && Account.Connection == this)
                     Account.Connection = null;
-            }
+                }
 
             Account = null;
-        }
+            }
         public void Disconnect(byte reason)
-        {
+            {
             if (!Connected) return;
 
             Connected = false;
@@ -612,14 +616,14 @@ namespace Server.MirNetwork
                 SMain.Envir.Connections.Remove(this);
 
             lock (Envir.AccountLock)
-            {
+                {
                 if (Player != null)
                     Player.StopGame(reason);
 
                 if (Account != null && Account.Connection == this)
                     Account.Connection = null;
 
-            }
+                }
 
             Account = null;
 
@@ -630,16 +634,16 @@ namespace Server.MirNetwork
 
             if (_client != null) _client.Client.Dispose();
             _client = null;
-        }
+            }
         public void SendDisconnect(byte reason)
-        {
-            if (!Connected)
             {
+            if (!Connected)
+                {
                 Disconnecting = true;
                 SoftDisconnect(reason);
                 return;
-            }
-            
+                }
+
             Disconnecting = true;
 
             List<byte> data = new List<byte>();
@@ -648,143 +652,568 @@ namespace Server.MirNetwork
 
             BeginSend(data);
             SoftDisconnect(reason);
-        }
+            }
 
         private void ClientVersion(C.ClientVersion p)
-        {
+            {
             if (Stage != GameStage.None) return;
 
             if (Settings.CheckVersion)
                 if (!Functions.CompareBytes(Settings.VersionHash, p.VersionHash))
-                {
+                    {
                     Disconnecting = true;
 
                     List<byte> data = new List<byte>();
 
-                    data.AddRange(new S.ClientVersion {Result = 0}.GetPacketBytes());
+                    data.AddRange(new S.ClientVersion { Result = 0 }.GetPacketBytes());
 
                     BeginSend(data);
                     SoftDisconnect(10);
                     SMain.Enqueue(SessionID + ", Disconnnected - Wrong Client Version.");
                     return;
-                }
+                    }
 
             SMain.Enqueue(SessionID + ", " + IPAddress + ", Client version matched.");
             Enqueue(new S.ClientVersion { Result = 1 });
 
             Stage = GameStage.Login;
-        }
+            }
         private void ClientKeepAlive(C.KeepAlive p)
-        {
-            Enqueue(new S.KeepAlive
             {
+            Enqueue(new S.KeepAlive
+                {
                 Time = p.Time
-            });
-        }
+                });
+            }
         private void NewAccount(C.NewAccount p)
-        {
+            {
             if (Stage != GameStage.Login) return;
 
             SMain.Enqueue(SessionID + ", " + IPAddress + ", New account being created.");
             SMain.Envir.NewAccount(p, this);
-        }
+            }
         private void ChangePassword(C.ChangePassword p)
-        {
+            {
             if (Stage != GameStage.Login) return;
 
             SMain.Enqueue(SessionID + ", " + IPAddress + ", Password being changed.");
             SMain.Envir.ChangePassword(p, this);
-        }
+            }
         private void Login(C.Login p)
-        {
+            {
             if (Stage != GameStage.Login) return;
 
             SMain.Enqueue(SessionID + ", " + IPAddress + ", User logging in.");
             SMain.Envir.Login(p, this);
-        }
+            }
         private void NewCharacter(C.NewCharacter p)
-        {
+            {
             if (Stage != GameStage.Select) return;
 
             SMain.Envir.NewCharacter(p, this, Account.AdminAccount);
-        }
+            }
         private void DeleteCharacter(C.DeleteCharacter p)
-        {
-            if (Stage != GameStage.Select) return;
-            
-            if (!Settings.AllowDeleteCharacter)
             {
+            if (Stage != GameStage.Select) return;
+
+            if (!Settings.AllowDeleteCharacter)
+                {
                 Enqueue(new S.DeleteCharacter { Result = 0 });
                 return;
-            }
+                }
 
             CharacterInfo temp = null;
-            
+
 
             for (int i = 0; i < Account.Characters.Count; i++)
-			{
-			    if (Account.Characters[i].Index != p.CharacterIndex) continue;
+                {
+                if (Account.Characters[i].Index != p.CharacterIndex) continue;
 
-			    temp = Account.Characters[i];
-			    break;
-			}
+                temp = Account.Characters[i];
+                break;
+                }
 
             if (temp == null)
-            {
+                {
                 Enqueue(new S.DeleteCharacter { Result = 1 });
                 return;
-            }
+                }
 
             temp.Deleted = true;
             temp.DeleteDate = SMain.Envir.Now;
+
+            try
+                {
+
+                MySqlConnection connection = new MySqlConnection(); //star conection 
+                String connectionString;
+                connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                connection.ConnectionString = connectionString;
+                connection.Open();
+
+                var sqlCommand = "UPDATE " + Settings.DBAccount + ".characterinfo SET Deleted = @Deleted, DeleteDate = @DeleteDate WHERE IndexID = '" + temp.Index + "'";
+
+                using (var command = new MySqlCommand(sqlCommand, connection))
+                    {
+                    command.Parameters.AddWithValue("@Deleted", temp.Deleted);
+                    command.Parameters.AddWithValue("@DeleteDate", temp.DeleteDate);
+
+                    command.ExecuteNonQuery();
+                    command.Dispose();
+
+                    }
+
+                connection.Close();
+
+                }
+            catch (MySqlException ex)
+                {
+                SMain.Enqueue(ex);
+                }
+
             SMain.Envir.RemoveRank(temp);
             Enqueue(new S.DeleteCharacterSuccess { CharacterIndex = temp.Index });
-        }
+            }
         private void StartGame(C.StartGame p)
-        {
+            {
+            var timer = Stopwatch.StartNew();
             if (Stage != GameStage.Select) return;
 
             if (!Settings.AllowStartGame && (Account == null || (Account != null && !Account.AdminAccount)))
-            {
+                {
                 Enqueue(new S.StartGame { Result = 0 });
                 return;
-            }
+                }
 
             if (Account == null)
-            {
+                {
                 Enqueue(new S.StartGame { Result = 1 });
                 return;
-            }
+                }
 
 
             CharacterInfo info = null;
+            int check = 0;
+
+            for (int i = 0; i < Account.Storage.Length; i++)
+                {
+                if (Account.Storage[i] != null)
+                    {
+                    check = 1;
+                    break;
+                    }
+                }
+
+            if (check == 0)
+                {
+                try
+                    {
+
+                    MySqlConnection connection = new MySqlConnection(); //star conection 
+                    String connectionString;
+                    connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; convert zero datetime=True";
+                    connection.ConnectionString = connectionString;
+                    connection.Open();
+
+                    MySqlCommand instruccion = connection.CreateCommand();
+
+                    instruccion.CommandText = "SELECT * FROM " + Settings.DBAccount + ".storage WHERE AccountID = '" + Account.AccountID + "'";
+
+                    MySqlDataReader readerInventoryDB = instruccion.ExecuteReader();
+
+                    while (readerInventoryDB.Read())
+                        {
+                        UserItem AddItem = new UserItem(readerInventoryDB);
+                        int Position = Convert.ToInt32(readerInventoryDB["Position"]);
+                        if (SMain.Envir.BindItem(AddItem))
+                            {
+                            Account.Storage[Position] = AddItem;
+                            }
+                        }
+
+                    readerInventoryDB.Dispose();
+                    connection.Close();
+
+                    }
+                catch (MySqlException ex)
+                    {
+                    SMain.Enqueue(ex);
+                    }
+                }
+
+
 
             for (int i = 0; i < Account.Characters.Count; i++)
-            {
-                if (Account.Characters[i].Index != p.CharacterIndex) continue;
+                {
 
+                if (Account.Characters[i].Index != p.CharacterIndex) continue;
+                try
+                    {
+
+                    MySqlConnection connection = new MySqlConnection(); //star conection 
+                    String connectionString;
+                    connectionString = "Server=" + Settings.ServerIP + "; Uid=" + Settings.Uid + "; Pwd=" + Settings.Pwd + "; pooling = false; convert zero datetime=True";
+                    connection.ConnectionString = connectionString;
+                    connection.Open();
+
+                    MySqlCommand instruccion = connection.CreateCommand();
+
+                    instruccion.CommandText = "SELECT * FROM " + Settings.DBAccount + ".inventory WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerInventoryDB = instruccion.ExecuteReader();
+
+                    CheckStore.Clear();
+
+                    while (readerInventoryDB.Read())
+                        {
+                        UserItem AddItem = new UserItem(readerInventoryDB);
+
+                        if (SMain.Envir.BindItem(AddItem))
+                            {
+                            CheckStore.Add(AddItem);
+                            }
+                        }
+
+                    readerInventoryDB.Dispose();
+
+                    for (int j = 0; j < CheckStore.Count; j++)
+                        {
+                        if (!CheckStore[j].IsAwake) continue;
+
+                        MySqlCommand instruccionAwake = connection.CreateCommand();
+
+                        instruccionAwake.CommandText = "SELECT * FROM " + Settings.DBAccount + ".awake WHERE UniqueID = '" + CheckStore[j].UniqueID + "' ORDER BY Position";
+
+                        MySqlDataReader readerAwakeDB = instruccionAwake.ExecuteReader();
+
+                        CheckStore[j].Awake = new Awake();
+                        CheckStore[j].Awake.type = (AwakeType)Convert.ToInt32(CheckStore[j].AwakeType);
+
+                        while (readerAwakeDB.Read())
+                            {
+                            CheckStore[j].Awake.listAwake.Add(Convert.ToByte(readerAwakeDB["Value"]));
+                            }
+
+                        readerAwakeDB.Dispose();
+                        }
+
+                    MySqlCommand instruccionMagics = connection.CreateCommand();
+
+                    instruccionMagics.CommandText = "SELECT * FROM " + Settings.DBAccount + ".magics WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerMagicsDB = instruccionMagics.ExecuteReader();
+
+                    Account.Characters[i].Magics.Clear();
+
+                    while (readerMagicsDB.Read())
+                        {
+                        Account.Characters[i].Magics.Add(new UserMagic(readerMagicsDB));
+
+                        }
+
+                    readerMagicsDB.Dispose();
+
+
+                    MySqlCommand instruccionIntelligentCreatures = connection.CreateCommand();
+
+                    instruccionIntelligentCreatures.CommandText = "SELECT * FROM " + Settings.DBAccount + ".intelligentcreatures WHERE ChName = '" + Account.Characters[i].Name + "' ORDER BY SlotIndex";
+
+
+                    MySqlDataReader readerIntelligentCreaturesDB = instruccionIntelligentCreatures.ExecuteReader();
+
+
+                    Account.Characters[i].IntelligentCreatures.Clear();
+
+                    while (readerIntelligentCreaturesDB.Read())
+                        {
+                        Account.Characters[i].IntelligentCreatures.Add(new UserIntelligentCreature(readerIntelligentCreaturesDB));
+
+                        }
+
+                    readerIntelligentCreaturesDB.Dispose();
+
+                    Account.Characters[i].CurrentQuests.Clear();
+
+                    MySqlCommand instruccionQuestProgressInfo = connection.CreateCommand();
+
+                    instruccionQuestProgressInfo.CommandText = "SELECT * FROM " + Settings.DBAccount + ".currentquests WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerQuestProgressDB = instruccionQuestProgressInfo.ExecuteReader();
+
+                    Account.Characters[i].CurrentQuests.Clear();
+
+                    while (readerQuestProgressDB.Read())
+                        {
+
+                        Account.Characters[i].CurrentQuests.Add(new QuestProgressInfo(readerQuestProgressDB, Account.Characters[i].Name));
+
+                        }
+
+                    readerQuestProgressDB.Dispose();
+                    
+                    Account.Characters[i].Buffs.Clear();
+
+                    MySqlCommand instruccionBuff = connection.CreateCommand();
+
+                    instruccionBuff.CommandText = "SELECT * FROM " + Settings.DBAccount + ".buff WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerBuff = instruccionBuff.ExecuteReader();
+
+                    while (readerBuff.Read())
+                        {
+
+                        Account.Characters[i].Buffs.Add(new Buff(readerBuff));
+
+                        }
+
+                    readerBuff.Dispose();
+                    Account.Characters[i].Mail.Clear();
+                    MySqlCommand instruccionMail = connection.CreateCommand();
+
+                    instruccionMail.CommandText = "SELECT * FROM " + Settings.DBAccount + ".mail WHERE RecipientIndex = '" + Account.Characters[i].Index + "'";
+
+                    MySqlDataReader readerMailDB = instruccionMail.ExecuteReader();
+
+                    while (readerMailDB.Read())
+                        {
+
+                        Account.Characters[i].Mail.Add(new MailInfo(readerMailDB));
+
+                        }
+
+                    readerMailDB.Dispose();
+
+                    MySqlCommand instruccionFriends = connection.CreateCommand();
+
+                    instruccionFriends.CommandText = "SELECT * FROM " + Settings.DBAccount + ".friends WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerFriendsDB = instruccionFriends.ExecuteReader();
+
+                    while (readerFriendsDB.Read())
+                        {
+
+                        Account.Characters[i].Friends.Add(new FriendInfo(readerFriendsDB));
+
+                        }
+
+                    readerFriendsDB.Dispose();
+
+                    MySqlCommand instruccioncompletedquests = connection.CreateCommand();
+
+                    instruccioncompletedquests.CommandText = "SELECT * FROM " + Settings.DBAccount + ".completedquests WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readercompletedquestsDB = instruccioncompletedquests.ExecuteReader();
+
+                    while (readercompletedquestsDB.Read())
+                        {
+
+                        Account.Characters[i].CompletedQuests.Add(Convert.ToInt32(readercompletedquestsDB["CompletedQuests"]));
+
+                        }
+
+                    readercompletedquestsDB.Dispose();
+
+
+                    MySqlCommand instruccionflag = connection.CreateCommand();
+
+                    instruccionflag.CommandText = "SELECT * FROM " + Settings.DBAccount + ".flags WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerflagDB = instruccionflag.ExecuteReader();
+
+                    while (readerflagDB.Read())
+                        {
+                        Account.Characters[i].Flags[Convert.ToInt32(readerflagDB["Number"])] = true;
+                        }
+
+                    readerflagDB.Dispose();
+
+                    MySqlCommand instruccionGS = connection.CreateCommand();
+
+                    instruccionGS.CommandText = "SELECT * FROM " + Settings.DBAccount + ".gspurchases WHERE ChName = '" + Account.Characters[i].Name + "'";
+
+                    MySqlDataReader readerGSDB = instruccionGS.ExecuteReader();
+
+                    while (readerGSDB.Read())
+                        {
+                        Account.Characters[i].GSpurchases.Add(Convert.ToInt32(readerGSDB["Key_"]), Convert.ToInt32(readerGSDB["Value"]));
+                        }
+
+                    readerGSDB.Dispose();
+
+                    connection.Close();
+
+                    }
+                catch (MySqlException ex)
+                    {
+                    SMain.Enqueue(ex);
+                    }
+
+                for (int j = 0; j < Account.Characters[i].Inventory.Length; j++)
+                    Account.Characters[i].Inventory[j] = null;
+
+                for (int j = 0; j < Account.Characters[i].Equipment.Length; j++)
+                    Account.Characters[i].Equipment[j] = null;
+
+                for (int j = 0; j < Account.Characters[i].Trade.Length; j++)
+                    Account.Characters[i].Trade[j] = null;
+
+                for (int j = 0; j < Account.Characters[i].QuestInventory.Length; j++)
+                    Account.Characters[i].QuestInventory[j] = null;
+
+                for (int j = 0; j < Account.Characters[i].Refine.Length; j++)
+                    Account.Characters[i].Refine[j] = null;
+
+                for (int j = 0; j < CheckStore.Count; j++)
+                    {
+                    switch (CheckStore[j].Store)
+                        {
+                        case "Inventory":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].Inventory[CheckStore[j].InitialPosition] = CheckStore[j];
+                            break;
+
+                        case "Equipment":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].Equipment[CheckStore[j].InitialPosition] = CheckStore[j];
+
+                            break;
+
+                        case "Trade":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].Trade[CheckStore[j].InitialPosition] = CheckStore[j];
+
+                            break;
+
+                        case "QuestInventory":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].QuestInventory[CheckStore[j].InitialPosition] = CheckStore[j];
+
+                            break;
+
+                        case "Refine":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].Refine[CheckStore[j].InitialPosition] = CheckStore[j];
+
+                            break;
+
+                        case "CurrentRefine":
+                            if (CheckStore[j].IsAttached == true)
+                                {
+
+                                for (int jj = 0; jj < CheckStore.Count; jj++)
+                                    {
+                                    if (CheckStore[j].UniqueID == CheckStore[jj].Attached)
+                                        {
+                                        CheckStore[j].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                        }
+                                    }
+                                }
+                            Account.Characters[i].CurrentRefine = CheckStore[j];
+                            SMain.Envir.BindItem(Account.Characters[i].CurrentRefine);
+                            break;
+
+                        default:
+                            break;
+                        }
+                    }
+                for (int s = 0; s < Account.Storage.Length; s++)
+                    {
+                    if (Account.Storage[s] != null && Account.Storage[s].IsAttached == true)
+                        {
+
+                        for (int jj = 0; jj < CheckStore.Count; jj++)
+                            {
+                            if (Account.Storage[s].UniqueID == CheckStore[jj].Attached)
+                                {
+                                Account.Storage[s].Slots[CheckStore[jj].InitialPosition] = CheckStore[jj];
+                                }
+                            }
+                        }
+                    }
                 info = Account.Characters[i];
                 break;
-            }
+                }
+
+            timer.Stop();
+
+            SMain.Enqueue("----------------------");
+            SMain.Enqueue(string.Format("Elapsed para int.Parse: {0}", timer.Elapsed));
+            SMain.Enqueue("----------------------");
+
             if (info == null)
-            {
+                {
                 Enqueue(new S.StartGame { Result = 2 });
                 return;
-            }
+                }
 
             if (info.Banned)
-            {
-                if (info.ExpiryDate > DateTime.Now)
                 {
+                if (info.ExpiryDate > DateTime.Now)
+                    {
                     Enqueue(new S.StartGameBanned { Reason = info.BanReason, ExpiryDate = info.ExpiryDate });
                     return;
-                }
+                    }
                 info.Banned = false;
-            }
+                }
             info.BanReason = string.Empty;
             info.ExpiryDate = DateTime.MinValue;
+            DateTime theDate = info.ExpiryDate;
 
-            long delay = (long) (SMain.Envir.Now - info.LastDate).TotalMilliseconds;
+            string sqlAccountLast = "UPDATE " + Settings.DBAccount + ".characterinfo SET ExpiryDate = '" + theDate.ToString("yyyy-MM-dd H:mm:ss") + "', BanReason = '" + info.BanReason + "'  WHERE IndexID = '" + info.Index + "'";
+
+            Envir.ConnectADB.Update(sqlAccountLast);
+
+            long delay = (long)(SMain.Envir.Now - info.LastDate).TotalMilliseconds;
 
 
             //if (delay < Settings.RelogDelay)
@@ -795,17 +1224,17 @@ namespace Server.MirNetwork
 
             Player = new PlayerObject(info, this);
             Player.StartGame();
-        }
+            }
 
         public void LogOut()
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (SMain.Envir.Time < Player.LogTime)
-            {
+                {
                 Enqueue(new S.LogOutFailed());
                 return;
-            }
+                }
 
             Player.StopGame(23);
 
@@ -813,196 +1242,196 @@ namespace Server.MirNetwork
             Player = null;
 
             Enqueue(new S.LogOutSuccess { Characters = Account.GetSelectInfo() });
-        }
+            }
 
         private void Turn(C.Turn p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (Player.ActionTime > SMain.Envir.Time)
                 _retryList.Enqueue(p);
             else
                 Player.Turn(p.Direction);
-        }
+            }
         private void Walk(C.Walk p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (Player.ActionTime > SMain.Envir.Time)
                 _retryList.Enqueue(p);
             else
                 Player.Walk(p.Direction);
-        }
+            }
         private void Run(C.Run p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (Player.ActionTime > SMain.Envir.Time)
                 _retryList.Enqueue(p);
             else
                 Player.Run(p.Direction);
-        }
-        
+            }
+
         private void Chat(C.Chat p)
-        {
-            if (p.Message.Length > Globals.MaxChatLength)
             {
+            if (p.Message.Length > Globals.MaxChatLength)
+                {
                 SendDisconnect(2);
                 return;
-            }
+                }
 
             if (Stage != GameStage.Game) return;
 
             Player.Chat(p.Message);
-        }
+            }
 
         private void MoveItem(C.MoveItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MoveItem(p.Grid, p.From, p.To);
-        }
+            }
         private void StoreItem(C.StoreItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.StoreItem(p.From, p.To);
-        }
+            }
 
         private void DepositRefineItem(C.DepositRefineItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DepositRefineItem(p.From, p.To);
-        }
+            }
 
         private void RetrieveRefineItem(C.RetrieveRefineItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RetrieveRefineItem(p.From, p.To);
-        }
+            }
 
         private void RefineCancel(C.RefineCancel p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RefineCancel();
-        }
+            }
 
         private void RefineItem(C.RefineItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RefineItem(p.UniqueID);
-        }
+            }
 
         private void CheckRefine(C.CheckRefine p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.CheckRefine(p.UniqueID);
-        }
+            }
 
         private void ReplaceWedRing(C.ReplaceWedRing p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ReplaceWeddingRing(p.UniqueID);
-        }
+            }
 
         private void DepositTradeItem(C.DepositTradeItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DepositTradeItem(p.From, p.To);
-        }
-        
+            }
+
         private void RetrieveTradeItem(C.RetrieveTradeItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RetrieveTradeItem(p.From, p.To);
-        }
+            }
         private void TakeBackItem(C.TakeBackItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TakeBackItem(p.From, p.To);
-        }
+            }
         private void MergeItem(C.MergeItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MergeItem(p.GridFrom, p.GridTo, p.IDFrom, p.IDTo);
-        }
+            }
         private void EquipItem(C.EquipItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.EquipItem(p.Grid, p.UniqueID, p.To);
-        }
+            }
         private void RemoveItem(C.RemoveItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RemoveItem(p.Grid, p.UniqueID, p.To);
-        }
+            }
         private void RemoveSlotItem(C.RemoveSlotItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RemoveSlotItem(p.Grid, p.UniqueID, p.To, p.GridTo);
-        }
+            }
         private void SplitItem(C.SplitItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.SplitItem(p.Grid, p.UniqueID, p.Count);
-        }
+            }
         private void UseItem(C.UseItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.UseItem(p.UniqueID);
-        }
+            }
         private void DropItem(C.DropItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DropItem(p.UniqueID, p.Count);
-        }
+            }
         private void DropGold(C.DropGold p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DropGold(p.Amount);
-        }
+            }
         private void PickUp()
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.PickUp();
-        }
+            }
         private void Inspect(C.Inspect p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (p.Ranking)
                 Player.Inspect((int)p.ObjectID);
             else
                 Player.Inspect(p.ObjectID);
-        }
+            }
         private void ChangeAMode(C.ChangeAMode p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AMode = p.Mode;
 
-            Enqueue(new S.ChangeAMode {Mode = Player.AMode});
-        }
+            Enqueue(new S.ChangeAMode { Mode = Player.AMode });
+            }
         private void ChangePMode(C.ChangePMode p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             if (Player.Class != MirClass.Wizard && Player.Class != MirClass.Taoist && Player.Pets.Count == 0)
                 return;
@@ -1010,632 +1439,641 @@ namespace Server.MirNetwork
             Player.PMode = p.Mode;
 
             Enqueue(new S.ChangePMode { Mode = Player.PMode });
-        }
+            }
         private void ChangeTrade(C.ChangeTrade p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AllowTrade = p.AllowTrade;
-        }
+            }
         private void Attack(C.Attack p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (!Player.Dead && (Player.ActionTime > SMain.Envir.Time || Player.AttackTime > SMain.Envir.Time))
                 _retryList.Enqueue(p);
             else
                 Player.Attack(p.Direction, p.Spell);
-        }
+            }
         private void RangeAttack(C.RangeAttack p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (!Player.Dead && (Player.ActionTime > SMain.Envir.Time || Player.AttackTime > SMain.Envir.Time))
                 _retryList.Enqueue(p);
             else
                 Player.RangeAttack(p.Direction, p.TargetLocation, p.TargetID);
-        }
+            }
         private void Harvest(C.Harvest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (!Player.Dead && Player.ActionTime > SMain.Envir.Time)
                 _retryList.Enqueue(p);
             else
                 Player.Harvest(p.Direction);
-        }
+            }
 
         private void CallNPC(C.CallNPC p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (p.Key.Length > 30) //No NPC Key should be that long.
-            {
+                {
                 SendDisconnect(2);
                 return;
-            }
+                }
 
             if (p.ObjectID == Player.DefaultNPC.ObjectID)
-            {
+                {
                 Player.CallDefaultNPC(p.ObjectID, p.Key);
                 return;
-            }
+                }
 
             Player.CallNPC(p.ObjectID, p.Key);
-        }
+            }
 
         private void TalkMonsterNPC(C.TalkMonsterNPC p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TalkMonster(p.ObjectID);
-        }
+            }
 
         private void BuyItem(C.BuyItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.BuyItem(p.ItemIndex, p.Count);
-        }
+            }
         private void SellItem(C.SellItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.SellItem(p.UniqueID, p.Count);
-        }
+            }
         private void RepairItem(C.RepairItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RepairItem(p.UniqueID);
-        }
+            }
         private void BuyItemBack(C.BuyItemBack p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
-           // Player.BuyItemBack(p.UniqueID, p.Count);
-        }
+            // Player.BuyItemBack(p.UniqueID, p.Count);
+            }
         private void SRepairItem(C.SRepairItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RepairItem(p.UniqueID, true);
-        }
+            }
         private void MagicKey(C.MagicKey p)
-        {
-            if (Stage != GameStage.Game) return;
-
-            for (int i = 0; i < Player.Info.Magics.Count; i++)
             {
+            if (Stage != GameStage.Game) return;
+            string Updatekey;
+            for (int i = 0; i < Player.Info.Magics.Count; i++)
+                {
                 UserMagic magic = Player.Info.Magics[i];
                 if (magic.Spell != p.Spell)
-                {
+                    {
                     if (magic.Key == p.Key)
                         magic.Key = 0;
+
+                   Updatekey = "UPDATE " + Settings.DBAccount + ".magics SET Key_ = '" + magic.Key + "'  WHERE ChName = '" + Player.Info.Name + "' AND Spell = '"+Convert.ToInt32(magic.Spell)+"'";
+
+                    Envir.ConnectADB.Update(Updatekey);
                     continue;
-                }
+                    }
 
                 magic.Key = p.Key;
+
+                Updatekey = "UPDATE " + Settings.DBAccount + ".magics SET Key_ = '" + magic.Key + "'  WHERE ChName = '" + Player.Info.Name + "' AND Spell = '" + Convert.ToInt32(magic.Spell) + "'";
+
+                Envir.ConnectADB.Update(Updatekey);
+
+                }
             }
-        }
         private void Magic(C.Magic p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (!Player.Dead && (Player.ActionTime > SMain.Envir.Time || Player.SpellTime > SMain.Envir.Time))
                 _retryList.Enqueue(p);
             else
                 Player.Magic(p.Spell, p.Direction, p.TargetID, p.Location);
-        }
+            }
 
         private void SwitchGroup(C.SwitchGroup p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.SwitchGroup(p.AllowGroup);
-        }
+            }
         private void AddMember(C.AddMember p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AddMember(p.Name);
-        }
+            }
         private void DelMember(C.DelMember p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DelMember(p.Name);
-        }
+            }
         private void GroupInvite(C.GroupInvite p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.GroupInvite(p.AcceptInvite);
-        }
+            }
 
         private void TownRevive()
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TownRevive();
-        }
+            }
 
         private void SpellToggle(C.SpellToggle p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.SpellToggle(p.Spell, p.CanUse);
-        }
+            }
         private void ConsignItem(C.ConsignItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ConsignItem(p.UniqueID, p.Price);
-        }
+            }
         private void MarketSearch(C.MarketSearch p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarketSearch(p.Match);
-        }
+            }
         private void MarketRefresh()
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarketRefresh();
-        }
+            }
 
         private void MarketPage(C.MarketPage p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarketPage(p.Page);
-        }
+            }
         private void MarketBuy(C.MarketBuy p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarketBuy(p.AuctionID);
-        }
+            }
         private void MarketGetBack(C.MarketGetBack p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarketGetBack(p.AuctionID);
-        }
+            }
         private void RequestUserName(C.RequestUserName p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RequestUserName(p.UserID);
-        }
+            }
         private void RequestChatItem(C.RequestChatItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RequestChatItem(p.ChatItemID);
-        }
+            }
         private void EditGuildMember(C.EditGuildMember p)
-        {
+            {
             if (Stage != GameStage.Game) return;
-            Player.EditGuildMember(p.Name,p.RankName,p.RankIndex,p.ChangeType);
-        }
+            Player.EditGuildMember(p.Name, p.RankName, p.RankIndex, p.ChangeType);
+            }
         private void EditGuildNotice(C.EditGuildNotice p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.EditGuildNotice(p.notice);
-        }
+            }
         private void GuildInvite(C.GuildInvite p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.GuildInvite(p.AcceptInvite);
-        }
+            }
         private void RequestGuildInfo(C.RequestGuildInfo p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.RequestGuildInfo(p.Type);
-        }
+            }
         private void GuildNameReturn(C.GuildNameReturn p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GuildNameReturn(p.Name);
-        }
+            }
         private void GuildStorageGoldChange(C.GuildStorageGoldChange p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GuildStorageGoldChange(p.Type, p.Amount);
-        }
+            }
         private void GuildStorageItemChange(C.GuildStorageItemChange p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GuildStorageItemChange(p.Type, p.From, p.To);
-        }
+            }
         private void GuildWarReturn(C.GuildWarReturn p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GuildWarReturn(p.Name);
-        }
+            }
 
 
         private void MarriageRequest(C.MarriageRequest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarriageRequest();
-        }
+            }
 
         private void MarriageReply(C.MarriageReply p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MarriageReply(p.AcceptInvite);
-        }
+            }
 
         private void ChangeMarriage(C.ChangeMarriage p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (Player.Info.Married == 0)
-            {
+                {
                 Player.AllowMarriage = !Player.AllowMarriage;
                 if (Player.AllowMarriage)
                     Player.ReceiveChat("You're now allowing marriage requests.", ChatType.Hint);
                 else
                     Player.ReceiveChat("You're now blocking marriage requests.", ChatType.Hint);
-            }
+                }
             else
-            {
+                {
                 Player.AllowLoverRecall = !Player.AllowLoverRecall;
                 if (Player.AllowLoverRecall)
                     Player.ReceiveChat("You're now allowing recall from lover.", ChatType.Hint);
                 else
                     Player.ReceiveChat("You're now blocking recall from lover.", ChatType.Hint);
+                }
             }
-        }
 
         private void DivorceRequest(C.DivorceRequest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DivorceRequest();
-        }
+            }
 
         private void DivorceReply(C.DivorceReply p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DivorceReply(p.AcceptInvite);
-        }
+            }
 
         private void AddMentor(C.AddMentor p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AddMentor(p.Name);
-        }
+            }
 
         private void MentorReply(C.MentorReply p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MentorReply(p.AcceptInvite);
-        }
+            }
 
         private void AllowMentor(C.AllowMentor p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
-                Player.AllowMentor = !Player.AllowMentor;
-                if (Player.AllowMentor)
-                    Player.ReceiveChat("You're now allowing mentor requests.", ChatType.Hint);
-                else
-                    Player.ReceiveChat("You're now blocking mentor requests.", ChatType.Hint);
-        }
+            Player.AllowMentor = !Player.AllowMentor;
+            if (Player.AllowMentor)
+                Player.ReceiveChat("You're now allowing mentor requests.", ChatType.Hint);
+            else
+                Player.ReceiveChat("You're now blocking mentor requests.", ChatType.Hint);
+            }
 
         private void CancelMentor(C.CancelMentor p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.MentorBreak(true);
-        }
+            }
 
         private void TradeRequest(C.TradeRequest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TradeRequest();
-        }
+            }
         private void TradeGold(C.TradeGold p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TradeGold(p.Amount);
-        }
+            }
         private void TradeReply(C.TradeReply p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TradeReply(p.AcceptInvite);
-        }
+            }
         private void TradeConfirm(C.TradeConfirm p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TradeConfirm(p.Locked);
-        }
+            }
         private void TradeCancel(C.TradeCancel p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.TradeCancel();
-        }
+            }
         private void EquipSlotItem(C.EquipSlotItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.EquipSlotItem(p.Grid, p.UniqueID, p.To, p.GridTo);
-        }
+            }
 
         private void FishingCast(C.FishingCast p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.FishingCast(p.CastOut, true);
-        }
+            }
 
         private void FishingChangeAutocast(C.FishingChangeAutocast p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.FishingChangeAutocast(p.AutoCast);
-        }
+            }
 
         private void AcceptQuest(C.AcceptQuest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AcceptQuest(p.QuestIndex); //p.NPCIndex,
-        }
+            }
 
         private void FinishQuest(C.FinishQuest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.FinishQuest(p.QuestIndex, p.SelectedItemIndex);
-        }
+            }
 
         private void AbandonQuest(C.AbandonQuest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AbandonQuest(p.QuestIndex);
-        }
+            }
 
         private void ShareQuest(C.ShareQuest p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ShareQuest(p.QuestIndex);
-        }
+            }
 
         private void AcceptReincarnation()
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (Player.ReincarnationHost != null && Player.ReincarnationHost.ReincarnationReady)
-            {
+                {
                 Player.Revive((uint)Player.MaxHP / 2, true);
                 Player.ReincarnationHost = null;
                 return;
-            }
+                }
 
             Player.ReceiveChat("Reincarnation failed", ChatType.System);
-        }
+            }
 
         private void CancelReincarnation()
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.ReincarnationExpireTime = SMain.Envir.Time;
 
-        }
+            }
 
         private void CombineItem(C.CombineItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.CombineItem(p.IDFrom, p.IDTo);
-        }
+            }
 
         private void SetConcentration(C.SetConcentration p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ConcentrateInterrupted = p.Interrupted;
-        }
+            }
 
         private void Awakening(C.Awakening p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.Awakening(p.UniqueID, p.Type);
-        }
+            }
 
         private void AwakeningNeedMaterials(C.AwakeningNeedMaterials p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AwakeningNeedMaterials(p.UniqueID, p.Type);
-        }
+            }
 
         private void DisassembleItem(C.DisassembleItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DisassembleItem(p.UniqueID);
-        }
+            }
 
         private void DowngradeAwakening(C.DowngradeAwakening p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DowngradeAwakening(p.UniqueID);
-        }
+            }
 
         private void ResetAddedItem(C.ResetAddedItem p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ResetAddedItem(p.UniqueID);
-        }
+            }
 
         public void SendMail(C.SendMail p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             if (p.Gold > 0 || p.ItemsIdx.Length > 0)
-            {
+                {
                 Player.SendMail(p.Name, p.Message, p.Gold, p.ItemsIdx, p.Stamped);
-            }
+                }
             else
-            {
+                {
                 Player.SendMail(p.Name, p.Message);
+                }
             }
-        }
 
         public void ReadMail(C.ReadMail p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.ReadMail(p.MailID);
-        }
+            }
 
         public void CollectParcel(C.CollectParcel p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.CollectMail(p.MailID);
-        }
+            }
 
         public void DeleteMail(C.DeleteMail p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.DeleteMail(p.MailID);
-        }
+            }
 
         public void LockMail(C.LockMail p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.LockMail(p.MailID, p.Lock);
-        }
+            }
 
         public void MailCost(C.MailCost p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             uint cost = Player.GetMailCost(p.ItemsIdx, p.Gold, p.Stamped);
 
             Enqueue(new S.MailCost { Cost = cost });
-        }
+            }
 
         private void UpdateIntelligentCreature(C.UpdateIntelligentCreature p)//IntelligentCreature
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             ClientIntelligentCreature petUpdate = p.Creature;
             if (petUpdate == null) return;
 
             if (p.ReleaseMe)
-            {
+                {
                 Player.ReleaseIntelligentCreature(petUpdate.PetType);
                 return;
-            }
+                }
             else if (p.SummonMe)
-            {
+                {
                 Player.SummonIntelligentCreature(petUpdate.PetType);
                 return;
-            }
+                }
             else if (p.UnSummonMe)
-            {
+                {
                 Player.UnSummonIntelligentCreature(petUpdate.PetType);
                 return;
-            }
+                }
             else
-            {
+                {
                 //Update the creature info
                 for (int i = 0; i < Player.Info.IntelligentCreatures.Count; i++)
-                {
-                    if (Player.Info.IntelligentCreatures[i].PetType == petUpdate.PetType)
                     {
+                    if (Player.Info.IntelligentCreatures[i].PetType == petUpdate.PetType)
+                        {
                         Player.Info.IntelligentCreatures[i].CustomName = petUpdate.CustomName;
                         Player.Info.IntelligentCreatures[i].SlotIndex = petUpdate.SlotIndex;
                         Player.Info.IntelligentCreatures[i].Filter = petUpdate.Filter;
                         Player.Info.IntelligentCreatures[i].petMode = petUpdate.petMode;
-                    }
+                        }
                     else continue;
-                }
+                    }
 
                 if (Player.CreatureSummoned)
-                {
+                    {
                     if (Player.SummonedCreatureType == petUpdate.PetType)
                         Player.UpdateSummonedCreature(petUpdate.PetType);
+                    }
                 }
             }
-        }
 
         private void IntelligentCreaturePickup(C.IntelligentCreaturePickup p)//IntelligentCreature
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.IntelligentCreaturePickup(p.MouseMode, p.Location);
-        }
+            }
 
         private void AddFriend(C.AddFriend p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AddFriend(p.Name, p.Blocked);
-        }
+            }
 
         private void RemoveFriend(C.RemoveFriend p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.RemoveFriend(p.CharacterIndex);
-        }
+            }
 
         private void AddMemo(C.AddMemo p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.AddMemo(p.CharacterIndex, p.Memo);
-        }
+            }
         private void GuildBuffUpdate(C.GuildBuffUpdate p)
-        {
+            {
             if (Stage != GameStage.Game) return;
-            Player.GuildBuffUpdate(p.Action,p.Id);
-        }
+            Player.GuildBuffUpdate(p.Action, p.Id);
+            }
         private void GameshopBuy(C.GameshopBuy p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GameshopBuy(p.GIndex, p.Quantity);
-        }
+            }
 
         private void NPCConfirmInput(C.NPCConfirmInput p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             Player.NPCInputStr = p.Value;
 
             Player.CallNPC(Player.NPCID, p.PageName);
-        }
+            }
 
         public List<byte[]> Image = new List<byte[]>();
-        
+
         private void ReportIssue(C.ReportIssue p)
-        {
+            {
             if (Stage != GameStage.Game) return;
 
             return;
@@ -1643,22 +2081,22 @@ namespace Server.MirNetwork
             Image.Add(p.Image);
 
             if (p.ImageChunk >= p.ImageSize)
-            {
+                {
                 System.Drawing.Image image = Functions.ByteArrayToImage(Functions.CombineArray(Image));
                 image.Save("Reported-" + Player.Name + "-" + DateTime.Now.ToString("yyMMddHHmmss") + ".jpg");
                 Image.Clear();
+                }
             }
-        }
         private void GetRanking(C.GetRanking p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.GetRanking(p.RankIndex);
-        }
+            }
 
         private void Opendoor(C.Opendoor p)
-        {
+            {
             if (Stage != GameStage.Game) return;
             Player.Opendoor(p.DoorIndex);
+            }
         }
     }
-}

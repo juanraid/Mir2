@@ -388,7 +388,7 @@ namespace Server
         {
             if (SMain.Envir.Running) return;
 
-            SMain.Envir.SaveAccounts();
+          //  SMain.Envir.SaveAccounts();
         }
 
         private void AdminCheckBox_CheckedChanged(object sender, EventArgs e)

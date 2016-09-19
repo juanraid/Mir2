@@ -121,6 +121,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.label29 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.groupBox10.SuspendLayout();
@@ -209,6 +210,7 @@
             // 
             // groupBox10
             // 
+            this.groupBox10.Controls.Add(this.label29);
             this.groupBox10.Controls.Add(this.GuildItemNamecomboBox);
             this.groupBox10.Controls.Add(this.label94);
             this.groupBox10.Controls.Add(this.GuildAmounttextBox);
@@ -240,9 +242,9 @@
             this.label94.AutoSize = true;
             this.label94.Location = new System.Drawing.Point(255, 55);
             this.label94.Name = "label94";
-            this.label94.Size = new System.Drawing.Size(76, 13);
+            this.label94.Size = new System.Drawing.Size(73, 13);
             this.label94.TabIndex = 36;
-            this.label94.Text = "(Gold = blank):";
+            this.label94.Text = "(Gold = blank)";
             // 
             // GuildAmounttextBox
             // 
@@ -1015,6 +1017,15 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "Length : ";
             // 
+            // label29
+            // 
+            this.label29.AutoSize = true;
+            this.label29.Location = new System.Drawing.Point(257, 78);
+            this.label29.Name = "label29";
+            this.label29.Size = new System.Drawing.Size(54, 13);
+            this.label29.TabIndex = 38;
+            this.label29.Text = "(Item = 1 )";
+            // 
             // GuildInfoForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1144,6 +1155,6 @@
         private System.Windows.Forms.TextBox BufftxtAc;
         private System.Windows.Forms.TextBox bufftxtIcon;
         private System.Windows.Forms.Label label28;
-
-    }
+        private System.Windows.Forms.Label label29;
+        }
 }

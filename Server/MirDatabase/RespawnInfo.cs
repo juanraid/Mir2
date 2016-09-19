@@ -4,11 +4,13 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using Server.MirEnvir;
+using MySql.Data.MySqlClient;
 
 namespace Server.MirDatabase
 {
     public class RespawnInfo
     {
+        public int MapRespawnIndex;
         public int MonsterIndex;
         public Point Location;
         public ushort Count, Spread, Delay, RandomDelay;
@@ -23,6 +25,26 @@ namespace Server.MirDatabase
         {
 
         }
+        
+        public RespawnInfo(MySqlDataReader readerRespawnInfo)
+            {
+            MapRespawnIndex = Convert.ToInt32(readerRespawnInfo["MapRespawnIndex"]);
+
+            MonsterIndex = Convert.ToInt32(readerRespawnInfo["MonsterIndex"]);
+
+            Location = new Point(Convert.ToInt32(readerRespawnInfo["Location_X"]), Convert.ToInt32(readerRespawnInfo["Location_Y"]));
+
+            Count = Convert.ToUInt16(readerRespawnInfo["Count"]);
+            Spread = Convert.ToUInt16(readerRespawnInfo["Spread"]);
+            Delay = Convert.ToUInt16(readerRespawnInfo["Delay"]); ;
+            Direction = Convert.ToByte(readerRespawnInfo["Direction"]);
+            RoutePath = Convert.ToString(readerRespawnInfo["RoutePath"]);
+            RandomDelay = Convert.ToUInt16(readerRespawnInfo["RandomDelay"]);
+            RespawnIndex = Convert.ToInt32(readerRespawnInfo["RespawnIndex"]);
+            SaveRespawnTime = Convert.ToBoolean(readerRespawnInfo["SaveRespawnTime"]);
+            RespawnTicks = Convert.ToUInt16(readerRespawnInfo["RespawnTicks"]);
+            }
+
         public RespawnInfo(BinaryReader reader, int Version, int Customversion)
         {
             MonsterIndex = reader.ReadInt32();

@@ -153,6 +153,7 @@
             this.label32 = new System.Windows.Forms.Label();
             this.WWeightTextBox = new System.Windows.Forms.TextBox();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.NoWeddingRingcheckbox = new System.Windows.Forms.CheckBox();
             this.BreakOnDeathcheckbox = new System.Windows.Forms.CheckBox();
             this.Bind_DontSpecialRepaircheckBox = new System.Windows.Forms.CheckBox();
             this.Bind_dontdropcheckbox = new System.Windows.Forms.CheckBox();
@@ -183,11 +184,10 @@
             this.PasteButton = new System.Windows.Forms.Button();
             this.CopyMButton = new System.Windows.Forms.Button();
             this.ITypeFilterComboBox = new System.Windows.Forms.ComboBox();
-            this.ExportAllButton = new System.Windows.Forms.Button();
-            this.ExportSelectedButton = new System.Windows.Forms.Button();
-            this.ImportButton = new System.Windows.Forms.Button();
+            this.SaveButton = new System.Windows.Forms.Button();
             this.Gameshop_button = new System.Windows.Forms.Button();
-            this.NoWeddingRingcheckbox = new System.Windows.Forms.CheckBox();
+            this.FilterItemsTextBox = new System.Windows.Forms.TextBox();
+            this.label57 = new System.Windows.Forms.Label();
             this.ItemInfoPanel.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -1479,6 +1479,17 @@
             this.tabPage3.Text = "Binding";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
+            // NoWeddingRingcheckbox
+            // 
+            this.NoWeddingRingcheckbox.AutoSize = true;
+            this.NoWeddingRingcheckbox.Location = new System.Drawing.Point(21, 274);
+            this.NoWeddingRingcheckbox.Name = "NoWeddingRingcheckbox";
+            this.NoWeddingRingcheckbox.Size = new System.Drawing.Size(130, 17);
+            this.NoWeddingRingcheckbox.TabIndex = 115;
+            this.NoWeddingRingcheckbox.Text = "Disabled Weddingring";
+            this.NoWeddingRingcheckbox.UseVisualStyleBackColor = true;
+            this.NoWeddingRingcheckbox.CheckedChanged += new System.EventHandler(this.NoWeddingRingcheckbox_CheckedChanged);
+            // 
             // BreakOnDeathcheckbox
             // 
             this.BreakOnDeathcheckbox.AutoSize = true;
@@ -1755,7 +1766,7 @@
             // 
             // RemoveButton
             // 
-            this.RemoveButton.Location = new System.Drawing.Point(235, 12);
+            this.RemoveButton.Location = new System.Drawing.Point(393, 11);
             this.RemoveButton.Name = "RemoveButton";
             this.RemoveButton.Size = new System.Drawing.Size(65, 23);
             this.RemoveButton.TabIndex = 9;
@@ -1765,7 +1776,7 @@
             // 
             // AddButton
             // 
-            this.AddButton.Location = new System.Drawing.Point(174, 12);
+            this.AddButton.Location = new System.Drawing.Point(332, 11);
             this.AddButton.Name = "AddButton";
             this.AddButton.Size = new System.Drawing.Size(55, 23);
             this.AddButton.TabIndex = 8;
@@ -1787,7 +1798,7 @@
             // 
             // PasteButton
             // 
-            this.PasteButton.Location = new System.Drawing.Point(363, 12);
+            this.PasteButton.Location = new System.Drawing.Point(521, 11);
             this.PasteButton.Name = "PasteButton";
             this.PasteButton.Size = new System.Drawing.Size(53, 23);
             this.PasteButton.TabIndex = 24;
@@ -1797,7 +1808,7 @@
             // 
             // CopyMButton
             // 
-            this.CopyMButton.Location = new System.Drawing.Point(306, 12);
+            this.CopyMButton.Location = new System.Drawing.Point(464, 11);
             this.CopyMButton.Name = "CopyMButton";
             this.CopyMButton.Size = new System.Drawing.Size(51, 23);
             this.CopyMButton.TabIndex = 23;
@@ -1809,45 +1820,25 @@
             // 
             this.ITypeFilterComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ITypeFilterComboBox.FormattingEnabled = true;
-            this.ITypeFilterComboBox.Location = new System.Drawing.Point(14, 14);
+            this.ITypeFilterComboBox.Location = new System.Drawing.Point(14, 13);
             this.ITypeFilterComboBox.Name = "ITypeFilterComboBox";
             this.ITypeFilterComboBox.Size = new System.Drawing.Size(121, 21);
             this.ITypeFilterComboBox.TabIndex = 25;
             this.ITypeFilterComboBox.SelectedIndexChanged += new System.EventHandler(this.ITypeFilterComboBox_SelectedIndexChanged);
             // 
-            // ExportAllButton
+            // SaveButton
             // 
-            this.ExportAllButton.Location = new System.Drawing.Point(710, 12);
-            this.ExportAllButton.Name = "ExportAllButton";
-            this.ExportAllButton.Size = new System.Drawing.Size(76, 23);
-            this.ExportAllButton.TabIndex = 26;
-            this.ExportAllButton.Text = "Export All";
-            this.ExportAllButton.UseVisualStyleBackColor = true;
-            this.ExportAllButton.Click += new System.EventHandler(this.ExportAllButton_Click);
-            // 
-            // ExportSelectedButton
-            // 
-            this.ExportSelectedButton.Location = new System.Drawing.Point(612, 12);
-            this.ExportSelectedButton.Name = "ExportSelectedButton";
-            this.ExportSelectedButton.Size = new System.Drawing.Size(94, 23);
-            this.ExportSelectedButton.TabIndex = 27;
-            this.ExportSelectedButton.Text = "Export Selected";
-            this.ExportSelectedButton.UseVisualStyleBackColor = true;
-            this.ExportSelectedButton.Click += new System.EventHandler(this.ExportSelectedButton_Click);
-            // 
-            // ImportButton
-            // 
-            this.ImportButton.Location = new System.Drawing.Point(531, 12);
-            this.ImportButton.Name = "ImportButton";
-            this.ImportButton.Size = new System.Drawing.Size(75, 23);
-            this.ImportButton.TabIndex = 28;
-            this.ImportButton.Text = "Import";
-            this.ImportButton.UseVisualStyleBackColor = true;
-            this.ImportButton.Click += new System.EventHandler(this.ImportButton_Click);
+            this.SaveButton.Location = new System.Drawing.Point(694, 11);
+            this.SaveButton.Name = "SaveButton";
+            this.SaveButton.Size = new System.Drawing.Size(106, 23);
+            this.SaveButton.TabIndex = 28;
+            this.SaveButton.Text = "Save";
+            this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // Gameshop_button
             // 
-            this.Gameshop_button.Location = new System.Drawing.Point(422, 12);
+            this.Gameshop_button.Location = new System.Drawing.Point(580, 11);
             this.Gameshop_button.Name = "Gameshop_button";
             this.Gameshop_button.Size = new System.Drawing.Size(83, 23);
             this.Gameshop_button.TabIndex = 29;
@@ -1855,26 +1846,32 @@
             this.Gameshop_button.UseVisualStyleBackColor = true;
             this.Gameshop_button.Click += new System.EventHandler(this.Gameshop_button_Click);
             // 
-            // NoWeddingRingcheckbox
+            // FilterItemsTextBox
             // 
-            this.NoWeddingRingcheckbox.AutoSize = true;
-            this.NoWeddingRingcheckbox.Location = new System.Drawing.Point(21, 274);
-            this.NoWeddingRingcheckbox.Name = "NoWeddingRingcheckbox";
-            this.NoWeddingRingcheckbox.Size = new System.Drawing.Size(130, 17);
-            this.NoWeddingRingcheckbox.TabIndex = 115;
-            this.NoWeddingRingcheckbox.Text = "Disabled Weddingring";
-            this.NoWeddingRingcheckbox.UseVisualStyleBackColor = true;
-            this.NoWeddingRingcheckbox.CheckedChanged += new System.EventHandler(this.NoWeddingRingcheckbox_CheckedChanged);
+            this.FilterItemsTextBox.Location = new System.Drawing.Point(184, 14);
+            this.FilterItemsTextBox.Name = "FilterItemsTextBox";
+            this.FilterItemsTextBox.Size = new System.Drawing.Size(122, 20);
+            this.FilterItemsTextBox.TabIndex = 31;
+            this.FilterItemsTextBox.TextChanged += new System.EventHandler(this.FilterItemsTextBox_TextChanged);
+            // 
+            // label57
+            // 
+            this.label57.AutoSize = true;
+            this.label57.Location = new System.Drawing.Point(152, 17);
+            this.label57.Name = "label57";
+            this.label57.Size = new System.Drawing.Size(35, 13);
+            this.label57.TabIndex = 30;
+            this.label57.Text = "Filter :";
             // 
             // ItemInfoForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(812, 479);
+            this.Controls.Add(this.FilterItemsTextBox);
+            this.Controls.Add(this.label57);
             this.Controls.Add(this.Gameshop_button);
-            this.Controls.Add(this.ImportButton);
-            this.Controls.Add(this.ExportSelectedButton);
-            this.Controls.Add(this.ExportAllButton);
+            this.Controls.Add(this.SaveButton);
             this.Controls.Add(this.ITypeFilterComboBox);
             this.Controls.Add(this.PasteButton);
             this.Controls.Add(this.CopyMButton);
@@ -1899,6 +1896,7 @@
             this.tabPage4.ResumeLayout(false);
             this.tabPage4.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -1980,9 +1978,7 @@
         private System.Windows.Forms.TextBox EffectTextBox;
         private System.Windows.Forms.Label label34;
         private System.Windows.Forms.ComboBox ITypeFilterComboBox;
-        private System.Windows.Forms.Button ExportAllButton;
-        private System.Windows.Forms.Button ExportSelectedButton;
-        private System.Windows.Forms.Button ImportButton;
+        private System.Windows.Forms.Button SaveButton;
         private System.Windows.Forms.Label label35;
         private System.Windows.Forms.ComboBox ISetComboBox;
         private System.Windows.Forms.TextBox PoisonRecoverytextBox;
@@ -2064,6 +2060,7 @@
         private System.Windows.Forms.CheckBox BreakOnDeathcheckbox;
         private System.Windows.Forms.Button Gameshop_button;
         private System.Windows.Forms.CheckBox NoWeddingRingcheckbox;
-
-    }
+        private System.Windows.Forms.TextBox FilterItemsTextBox;
+        private System.Windows.Forms.Label label57;
+        }
 }

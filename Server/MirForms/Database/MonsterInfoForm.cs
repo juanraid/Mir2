@@ -40,7 +40,14 @@ namespace Server
 
             if (MessageBox.Show("Are you sure you want to remove the selected Monsters?", "Remove Monsters?", MessageBoxButtons.YesNo) != DialogResult.Yes) return;
 
-            for (int i = 0; i < _selectedMonsterInfos.Count; i++) Envir.Remove(_selectedMonsterInfos[i]);
+            for (int i = 0; i < _selectedMonsterInfos.Count; i++)
+                {
+                Envir.Remove(_selectedMonsterInfos[i]);
+                string sqlDelete = "DELETE FROM " + Settings.DBServer + ".monsterinfo WHERE IndexID = '" + _selectedMonsterInfos[i].Index + "'";
+
+                Envir.ConnectADB.Delete(sqlDelete);
+
+                }
 
             if (Envir.MonsterInfoList.Count == 0) Envir.MonsterIndex = 0;
 
@@ -608,7 +615,7 @@ namespace Server
         }
         private void MonsterInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Envir.SaveDB();
+            //Envir.SaveDB();
         }
 
         private void PasteMButton_Click(object sender, EventArgs e)
@@ -659,53 +666,21 @@ namespace Server
 
         }
 
-        private void ExportAllButton_Click(object sender, EventArgs e)
-        {
-            ExportMonsters(Envir.MonsterInfoList);
-        }
-
-        private void ExportSelected_Click(object sender, EventArgs e)
+        private void SaveButton_Click(object sender, EventArgs e)
         {
             var list = MonsterInfoListBox.SelectedItems.Cast<MonsterInfo>().ToList();
+            if (list.Count == 0)
+                {
+                MessageBox.Show("Not selected any Monsters");
+                    return;
+                }
 
-            ExportMonsters(list);
-        }
+            for (int i = 0; i < list.Count; i++)
+                MonsterInfo.SaveMonsterDB(list[i]);
+            MessageBox.Show("Saved Monster(s)");
 
-        private void ExportMonsters(IEnumerable<MonsterInfo> monsters)
-        {
-            var monsterInfos = monsters as MonsterInfo[] ?? monsters.ToArray();
-            var list = monsterInfos.Select(monster => monster.ToText()).ToList();
-
-            File.WriteAllLines(MonsterListPath, list);
-
-            MessageBox.Show(monsterInfos.Count() + " Items have been exported");
-        }
-
-        private void ImportButton_Click(object sender, EventArgs e)
-        {
-            string Path = string.Empty;
-
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Text File|*.txt";
-            ofd.ShowDialog();
-
-            if (ofd.FileName == string.Empty) return;
-
-            Path = ofd.FileName;
-
-            string data;
-            using (var sr = new StreamReader(Path))
-            {
-                data = sr.ReadToEnd();
             }
 
-            var monsters = data.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var m in monsters)
-                MonsterInfo.FromText(m);
-
-            UpdateInterface();
-        }
 
         private void DropBuilderButton_Click(object sender, EventArgs e)
         {

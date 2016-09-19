@@ -8,9 +8,11 @@ using System.Text.RegularExpressions;
 using C = ClientPackets;
 using S = ServerPackets;
 using System.Linq;
+using MySql.Data.MySqlClient;
+
 
 public enum BlendMode : sbyte
-{
+    {
     NONE = -1,
     NORMAL = 0,
     LIGHT = 1,
@@ -20,26 +22,26 @@ public enum BlendMode : sbyte
     INVLIGHTINV = 5,
     INVCOLOR = 6,
     INVBACKGROUND = 7
-}
+    }
 
 public enum DamageType : byte
-{
+    {
     Hit = 0,
     Miss = 1,
     Critical = 2
-}
+    }
 
 [Flags]
 public enum GMOptions : byte
-{
+    {
     None = 0,
     GameMaster = 0x0001,
     Observer = 0x0002,
     Superman = 0x0004
-}
+    }
 
 public enum AwakeType : byte
-{
+    {
     None = 0,
     DC,
     MC,
@@ -47,34 +49,34 @@ public enum AwakeType : byte
     AC,
     MAC,
     HPMP,
-}
+    }
 
 [Flags]
 public enum LevelEffects : byte
-{
+    {
     None = 0,
     Mist = 0x0001,
     RedDragon = 0x0002,
     BlueDragon = 0x0004
-}
+    }
 
 public enum OutputMessageType : byte
-{
-    Normal, 
+    {
+    Normal,
     Quest,
     Guild
-}
+    }
 
 public enum ItemGrade : byte
-{
+    {
     None = 0,
     Common = 1,
     Rare = 2,
     Legendary = 3,
     Mythical = 4,
-}
+    }
 public enum StatType : byte
-{
+    {
     AC = 0,
     MAC = 1,
     DC = 2,
@@ -99,25 +101,25 @@ public enum StatType : byte
     Holy = 21,
     Durability = 22,
     Unknown = 23
-}
+    }
 public enum RefinedValue : byte
-{
+    {
     None = 0,
     DC = 1,
     MC = 2,
     SC = 3,
-}
+    }
 
 public enum QuestType : byte
-{
+    {
     General = 0,
     Daily = 1,
     Repeatable = 2,
     Story = 3
-}
+    }
 
 public enum QuestIcon : byte
-{
+    {
     None = 0,
     QuestionWhite = 1,
     ExclamationYellow = 2,
@@ -126,17 +128,17 @@ public enum QuestIcon : byte
     QuestionBlue = 6,
     ExclamationGreen = 52,
     QuestionGreen = 53
-}
+    }
 
 public enum QuestState : byte
-{
+    {
     Add,
     Update,
     Remove
-}
+    }
 
 public enum DefaultNPCType : byte
-{
+    {
     Login,
     LevelUp,
     UseItem,
@@ -149,10 +151,10 @@ public enum DefaultNPCType : byte
     OnFinishQuest,
     Daily,
     TalkMonster
-}
+    }
 
 public enum IntelligentCreatureType : byte
-{
+    {
     None = 99,
     BabyPig = 0,
     Chick = 1,
@@ -166,7 +168,7 @@ public enum IntelligentCreatureType : byte
     BabySnowMan = 9,
     Frog = 10,
     BabyMonkey = 11
-}
+    }
 
 //1 blank mob files
 //7 mob frames not added
@@ -175,7 +177,7 @@ public enum IntelligentCreatureType : byte
 
 //TODO: add 2 missing frames in to blank frames, remove 2 duplicate frames (leaving no blanks and 2 duplicates)
 public enum Monster : ushort
-{
+    {
     Guard = 0,
     TaoistGuard = 1,
     Guard2 = 2,
@@ -325,7 +327,7 @@ public enum Monster : ushort
     HighAssassin = 146,
     DarkDustPile = 147,
     DarkBrownWolf = 148,
-    Football = 149, 
+    Football = 149,
     GingerBreadman = 150,
     HalloweenScythe = 151,
     GhastlyLeecher = 152,
@@ -348,10 +350,10 @@ public enum Monster : ushort
     RedTurtle = 169,//done
     GreenTurtle = 170,//done
     BlueTurtle = 171,//done
-        Catapult = 172, //not added frames //special 3 states in 1 
-        SabukWallSection = 173, //not added frames
-        NammandWallSection = 174, //not added frames
-        SiegeRepairman = 175, //not added frames
+    Catapult = 172, //not added frames //special 3 states in 1 
+    SabukWallSection = 173, //not added frames
+    NammandWallSection = 174, //not added frames
+    SiegeRepairman = 175, //not added frames
     BlueSanta = 176,//done
     BattleStandard = 177,//done
     ArcherGuard2 = 178,//done
@@ -580,11 +582,11 @@ public enum Monster : ushort
     Reindeer = 397, //frames not added
     AngryReindeer = 398,
     CargoBox = 399,
-    
+
     Ram1 = 400,
     Ram2 = 401,
     Kite = 402,
-    
+
 
     EvilMir = 900,
     EvilMirBody = 901,
@@ -616,10 +618,10 @@ public enum Monster : ushort
     BabySnowMan = 10009,//unknown
     Frog = 10010,//unknown
     BabyMonkey = 10011,//unknown
-}
+    }
 
 public enum MirAction : byte
-{
+    {
     Standing,
     Walking,
     Running,
@@ -668,42 +670,42 @@ public enum MirAction : byte
     FishingCast,
     FishingWait,
     FishingReel
-}
+    }
 
 public enum CellAttribute : byte
-{
+    {
     Walk = 0,
     HighWall = 1,
     LowWall = 2,
-}
+    }
 
 public enum LightSetting : byte
-{
+    {
     Normal = 0,
     Dawn = 1,
     Day = 2,
     Evening = 3,
     Night = 4
-}
+    }
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum MirGender : byte
-{
+    {
     Male = 0,
     Female = 1
-}
+    }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum MirClass : byte
-{
+    {
     Warrior = 0,
     Wizard = 1,
     Taoist = 2,
     Assassin = 3,
     Archer = 4
-}
+    }
 
 public enum MirDirection : byte
-{
+    {
     Up = 0,
     UpRight = 1,
     Right = 2,
@@ -712,11 +714,11 @@ public enum MirDirection : byte
     DownLeft = 5,
     Left = 6,
     UpLeft = 7
-}
+    }
 
 public enum ObjectType : byte
-{
-    None= 0,
+    {
+    None = 0,
     Player = 1,
     Item = 2,
     Merchant = 3,
@@ -724,10 +726,10 @@ public enum ObjectType : byte
     Monster = 5,
     Deco = 6,
     Creature = 7
-}
+    }
 
 public enum ChatType : byte
-{
+    {
     Normal = 0,
     Shout = 1,
     System = 2,
@@ -744,10 +746,10 @@ public enum ChatType : byte
     Mentor = 13,
     Shout2 = 14,
     Shout3 = 15
-}
+    }
 
 public enum ItemType : byte
-{
+    {
     Nothing = 0,
     Weapon = 1,
     Armour = 2,
@@ -782,13 +784,13 @@ public enum ItemType : byte
     Reel = 32,
     Fish = 33,
     Quest = 34,
-	Awakening = 35,
+    Awakening = 35,
     Pets = 36,
     Transform = 37,
-}
+    }
 
 public enum MirGridType : byte
-{
+    {
     None = 0,
     Inventory = 1,
     Equipment = 2,
@@ -806,10 +808,10 @@ public enum MirGridType : byte
     AwakenItem = 14,
     Mail = 15,
     Refine = 16,
-}
+    }
 
 public enum EquipmentSlot : byte
-{
+    {
     Weapon = 0,
     Armour = 1,
     Helmet = 2,
@@ -824,50 +826,50 @@ public enum EquipmentSlot : byte
     Boots = 11,
     Stone = 12,
     Mount = 13
-}
+    }
 
 public enum MountSlot : byte
-{
+    {
     Reins = 0,
     Bells = 1,
     Saddle = 2,
     Ribbon = 3,
     Mask = 4
-}
+    }
 
 public enum FishingSlot : byte
-{
+    {
     Hook = 0,
     Float = 1,
     Bait = 2,
     Finder = 3,
     Reel = 4
-}
+    }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum AttackMode : byte
-{
+    {
     Peace = 0,
     Group = 1,
     Guild = 2,
     EnemyGuild = 3,
     RedBrown = 4,
     All = 5
-}
+    }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum PetMode : byte
-{
+    {
     Both = 0,
     MoveOnly = 1,
     AttackOnly = 2,
     None = 3,
-}
+    }
 
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum PoisonType : ushort
-{
+    {
     None = 0,
     Green = 1,
     Red = 2,
@@ -878,13 +880,13 @@ public enum PoisonType : ushort
     DelayedExplosion = 64,
     Bleeding = 128,
     LRParalysis = 256
-}
+    }
 
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 
 public enum BindMode : short
-{
+    {
     none = 0,
     DontDeathdrop = 1,//0x0001
     DontDrop = 2,//0x0002
@@ -898,12 +900,12 @@ public enum BindMode : short
     BindOnEquip = 512,//0x0200
     NoSRepair = 1024,//0x0400
     NoWeddingRing = 2048,//0x0800
-}
+    }
 
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum SpecialItemMode : short
-{
+    {
     None = 0,
     Paralize = 0x0001,
     Teleport = 0x0002,
@@ -916,12 +918,12 @@ public enum SpecialItemMode : short
     Probe = 0x0100,
     Skill = 0x0200,
     NoDuraLoss = 0x0400,
-}
+    }
 
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredClass : byte
-{
+    {
     Warrior = 1,
     Wizard = 2,
     Taoist = 4,
@@ -929,29 +931,29 @@ public enum RequiredClass : byte
     Archer = 16,
     WarWizTao = Warrior | Wizard | Taoist,
     None = WarWizTao | Assassin | Archer
-}
+    }
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredGender : byte
-{
+    {
     Male = 1,
     Female = 2,
     None = Male | Female
-}
+    }
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RequiredType : byte
-{
+    {
     Level = 0,
     AC = 1,
     MAC = 2,
     DC = 3,
     MC = 4,
     SC = 5,
-}
+    }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum ItemSet : byte
-{
+    {
     None = 0,
     Spirit = 1,
     Recall = 2,
@@ -983,11 +985,11 @@ public enum ItemSet : byte
     Oppressive = 28,
     Paeok = 29,
     Sulgwan = 30
-}
+    }
 
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum Spell : byte
-{
+    {
     None = 0,
 
     //Warrior
@@ -1107,7 +1109,7 @@ public enum Spell : byte
     //Custom
     Blink = 151,
     Portal = 152,
-    
+
     //Map Events
     DigOutZombie = 200,
     Rubble = 201,
@@ -1115,10 +1117,10 @@ public enum Spell : byte
     MapLava = 203,
     MapQuake1 = 204,
     MapQuake2 = 205
-}
+    }
 
 public enum SpellEffect : byte
-{
+    {
     None,
     FatalSword,
     Teleport,
@@ -1147,10 +1149,10 @@ public enum SpellEffect : byte
     Behemoth,
     Stunned,
     IcePillar
-}
+    }
 
 public enum BuffType : byte
-{
+    {
     None = 0,
 
     //magics
@@ -1205,10 +1207,10 @@ public enum BuffType : byte
     MagicDefence,
     WonderDrug,
     Knapsack
-}
+    }
 
 public enum DefenceType : byte
-{
+    {
     ACAgility,
     AC,
     MACAgility,
@@ -1216,10 +1218,10 @@ public enum DefenceType : byte
     Agility,
     Repulsion,
     None
-}
+    }
 
 public enum ServerPacketIds : short
-{
+    {
     Connected,
     ClientVersion,
     Disconnect,
@@ -1428,7 +1430,7 @@ public enum ServerPacketIds : short
     MailSent,
     ParcelCollected,
     MailCost,
-	ResizeInventory,
+    ResizeInventory,
     ResizeStorage,
     NewIntelligentCreature,
     UpdateIntelligentCreatureList,
@@ -1446,10 +1448,10 @@ public enum ServerPacketIds : short
     GameShopStock,
     Rankings,
     Opendoor,
-}
+    }
 
 public enum ClientPacketIds : short
-{
+    {
     ClientVersion,
     Disconnect,
     KeepAlive,
@@ -1578,26 +1580,26 @@ public enum ClientPacketIds : short
     ReportIssue,
     GetRanking,
     Opendoor,
-}
+    }
 
 public enum ConquestType : byte
-{
+    {
     Request = 0,
     Auto = 1,
     Forced = 2,
-}
+    }
 
 public enum ConquestGame : byte
-{
+    {
     CapturePalace = 0,
     KingOfHill = 1,
     Random = 2,
     Classic = 3,
     ControlPoints = 4
-}
+    }
 
 public class InIReader
-{
+    {
     #region Fields
     private readonly List<string> _contents;
     private readonly string _fileName;
@@ -1605,24 +1607,24 @@ public class InIReader
 
     #region Constructor
     public InIReader(string fileName)
-    {
+        {
         _fileName = fileName;
 
         _contents = new List<string>();
         try
-        {
+            {
             if (File.Exists(_fileName))
                 _contents.AddRange(File.ReadAllLines(_fileName));
-        }
+            }
         catch
-        {
+            {
+            }
         }
-    }
     #endregion
 
     #region Functions
     private string FindValue(string section, string key)
-    {
+        {
         for (int a = 0; a < _contents.Count; a++)
             if (String.CompareOrdinal(_contents[a], "[" + section + "]") == 0)
                 for (int b = a + 1; b < _contents.Count; b++)
@@ -1631,404 +1633,404 @@ public class InIReader
                     else if (_contents[b].StartsWith("[") && _contents[b].EndsWith("]"))
                         return null;
         return null;
-    }
+        }
 
     private int FindIndex(string section, string key)
-    {
+        {
         for (int a = 0; a < _contents.Count; a++)
             if (String.CompareOrdinal(_contents[a], "[" + section + "]") == 0)
                 for (int b = a + 1; b < _contents.Count; b++)
                     if (String.CompareOrdinal(_contents[b].Split('=')[0], key) == 0)
                         return b;
                     else if (_contents[b].StartsWith("[") && _contents[b].EndsWith("]"))
-                    {
+                        {
                         _contents.Insert(b - 1, key + "=");
                         return b - 1;
-                    }
+                        }
                     else if (_contents.Count - 1 == b)
-                    {
+                        {
                         _contents.Add(key + "=");
                         return _contents.Count - 1;
-                    }
+                        }
         if (_contents.Count > 0)
             _contents.Add("");
 
         _contents.Add("[" + section + "]");
         _contents.Add(key + "=");
         return _contents.Count - 1;
-    }
+        }
 
     public void Save()
-    {
+        {
         try
-        {
+            {
             File.WriteAllLines(_fileName, _contents);
-        }
+            }
         catch
-        {
+            {
+            }
         }
-    }
     #endregion
 
     #region Read
     public bool ReadBoolean(string section, string key, bool Default)
-    {
+        {
         bool result;
 
         if (!bool.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public byte ReadByte(string section, string key, byte Default)
-    {
+        {
         byte result;
 
         if (!byte.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public sbyte ReadSByte(string section, string key, sbyte Default)
-    {
+        {
         sbyte result;
 
         if (!sbyte.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public ushort ReadUInt16(string section, string key, ushort Default)
-    {
+        {
         ushort result;
 
         if (!ushort.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public short ReadInt16(string section, string key, short Default)
-    {
+        {
         short result;
 
         if (!short.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public uint ReadUInt32(string section, string key, uint Default)
-    {
+        {
         uint result;
 
         if (!uint.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public int ReadInt32(string section, string key, int Default)
-    {
+        {
         int result;
 
         if (!int.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public ulong ReadUInt64(string section, string key, ulong Default)
-    {
+        {
         ulong result;
 
         if (!ulong.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public long ReadInt64(string section, string key, long Default)
-    {
+        {
         long result;
 
         if (!long.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public float ReadSingle(string section, string key, float Default)
-    {
+        {
         float result;
 
         if (!float.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public double ReadDouble(string section, string key, double Default)
-    {
+        {
         double result;
 
         if (!double.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public decimal ReadDecimal(string section, string key, decimal Default)
-    {
+        {
         decimal result;
 
         if (!decimal.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public string ReadString(string section, string key, string Default)
-    {
+        {
         string result = FindValue(section, key);
 
         if (string.IsNullOrEmpty(result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public char ReadChar(string section, string key, char Default)
-    {
+        {
         char result;
 
         if (!char.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
 
     public Point ReadPoint(string section, string key, Point Default)
-    {
+        {
         string temp = FindValue(section, key);
         int tempX, tempY;
         if (temp == null || !int.TryParse(temp.Split(',')[0], out tempX))
-        {
+            {
             Write(section, key, Default);
             return Default;
-        }
+            }
         if (!int.TryParse(temp.Split(',')[1], out tempY))
-        {
+            {
             Write(section, key, Default);
             return Default;
-        }
+            }
 
         return new Point(tempX, tempY);
-    }
+        }
 
     public Size ReadSize(string section, string key, Size Default)
-    {
+        {
         string temp = FindValue(section, key);
         int tempX, tempY;
         if (!int.TryParse(temp.Split(',')[0], out tempX))
-        {
+            {
             Write(section, key, Default);
             return Default;
-        }
+            }
         if (!int.TryParse(temp.Split(',')[1], out tempY))
-        {
+            {
             Write(section, key, Default);
             return Default;
-        }
+            }
 
         return new Size(tempX, tempY);
-    }
+        }
 
     public TimeSpan ReadTimeSpan(string section, string key, TimeSpan Default)
-    {
+        {
         TimeSpan result;
 
         if (!TimeSpan.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
 
         return result;
-    }
+        }
 
     public float ReadFloat(string section, string key, float Default)
-    {
+        {
         float result;
 
         if (!float.TryParse(FindValue(section, key), out result))
-        {
+            {
             result = Default;
             Write(section, key, Default);
-        }
+            }
 
         return result;
-    }
+        }
     #endregion
 
     #region Write
     public void Write(string section, string key, bool value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, byte value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, sbyte value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, ushort value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, short value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, uint value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, int value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, ulong value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, long value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, float value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, double value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, decimal value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, string value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, char value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
 
     public void Write(string section, string key, Point value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value.X + "," + value.Y;
         Save();
-    }
+        }
 
     public void Write(string section, string key, Size value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value.Width + "," + value.Height;
         Save();
-    }
+        }
 
     public void Write(string section, string key, TimeSpan value)
-    {
+        {
         _contents[FindIndex(section, key)] = key + "=" + value;
         Save();
-    }
+        }
     #endregion
-}
+    }
 
 public static class Globals
-{
+    {
     public const int
         MinAccountIDLength = 3,
         MaxAccountIDLength = 15,
@@ -2043,7 +2045,7 @@ public static class Globals
         MaxChatLength = 80,
 
         MaxGroup = 15,
-        
+
         MaxAttackRange = 9,
 
         MaxDragonLevel = 13,
@@ -2064,12 +2066,12 @@ public static class Globals
                       MinConsignment = 5000,
                       MaxConsignment = 50000000;
 
-}
+    }
 
 public static class Functions
-{
-    public static bool CompareBytes(byte[] a, byte[] b)
     {
+    public static bool CompareBytes(byte[] a, byte[] b)
+        {
         if (a == b) return true;
 
         if (a == null || b == null || a.Length != b.Length) return false;
@@ -2077,10 +2079,10 @@ public static class Functions
         for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) return false;
 
         return true;
-    }
+        }
 
     public static bool TryParse(string s, out Point temp)
-    {
+        {
         temp = Point.Empty;
         int tempX, tempY;
         if (String.IsNullOrWhiteSpace(s)) return false;
@@ -2096,94 +2098,94 @@ public static class Functions
 
         temp = new Point(tempX, tempY);
         return true;
-    }
+        }
     public static Point Subtract(this Point p1, Point p2)
-    {
-        return new Point(p1.X - p2.X, p1.Y - p2.Y);
-    }
-    public static Point Subtract(this Point p1, int x, int y)
-    {
-        return new Point(p1.X - x, p1.Y - y);
-    }
-    public static Point Add(this Point p1, Point p2)
-    {
-        return new Point(p1.X + p2.X, p1.Y + p2.Y);
-    }
-    public static Point Add(this Point p1, int x, int y)
-    {
-        return new Point(p1.X + x, p1.Y + y);
-    }
-    public static string PointToString(Point p)
-    {
-        return String.Format("{0}, {1}", p.X, p.Y);
-    }
-    public static bool InRange(Point a, Point b, int i)
-    {
-        return Math.Abs(a.X - b.X) <= i && Math.Abs(a.Y - b.Y) <= i;
-    }
-
-    public static bool FacingEachOther(MirDirection dirA, Point pointA, MirDirection dirB, Point pointB)
-    {
-        if (dirA == DirectionFromPoint(pointA, pointB) && dirB == DirectionFromPoint(pointB, pointA))
         {
-            return true;
+        return new Point(p1.X - p2.X, p1.Y - p2.Y);
+        }
+    public static Point Subtract(this Point p1, int x, int y)
+        {
+        return new Point(p1.X - x, p1.Y - y);
+        }
+    public static Point Add(this Point p1, Point p2)
+        {
+        return new Point(p1.X + p2.X, p1.Y + p2.Y);
+        }
+    public static Point Add(this Point p1, int x, int y)
+        {
+        return new Point(p1.X + x, p1.Y + y);
+        }
+    public static string PointToString(Point p)
+        {
+        return String.Format("{0}, {1}", p.X, p.Y);
+        }
+    public static bool InRange(Point a, Point b, int i)
+        {
+        return Math.Abs(a.X - b.X) <= i && Math.Abs(a.Y - b.Y) <= i;
         }
 
+    public static bool FacingEachOther(MirDirection dirA, Point pointA, MirDirection dirB, Point pointB)
+        {
+        if (dirA == DirectionFromPoint(pointA, pointB) && dirB == DirectionFromPoint(pointB, pointA))
+            {
+            return true;
+            }
+
         return false;
-    }
+        }
 
     public static string PrintTimeSpanFromSeconds(double secs, bool accurate = true)
-    {
+        {
         TimeSpan t = TimeSpan.FromSeconds(secs);
         string answer;
         if (t.TotalMinutes < 1.0)
-        {
+            {
             answer = string.Format("{0}s", t.Seconds);
-        }
+            }
         else if (t.TotalHours < 1.0)
-        {
+            {
             answer = accurate ? string.Format("{0}m {1:D2}s", t.Minutes, t.Seconds) : string.Format("{0}m", t.Minutes);
-        }
+            }
         else if (t.TotalDays < 1.0)
-        {
+            {
             answer = accurate ? string.Format("{0}h {1:D2}m {2:D2}s", (int)t.Hours, t.Minutes, t.Seconds) : string.Format("{0}h {1:D2}m", (int)t.TotalHours, t.Minutes);
-        }
+            }
         else // more than 1 day
-        {
+            {
             answer = accurate ? string.Format("{0}d {1:D2}h {2:D2}m {3:D2}s", (int)t.Days, (int)t.Hours, t.Minutes, t.Seconds) : string.Format("{0}d {1}h {2:D2}m", (int)t.TotalDays, (int)t.Hours, t.Minutes);
-        }
+            }
 
         return answer;
-    }
+        }
 
     public static string PrintTimeSpanFromMilliSeconds(double milliSeconds)
-    {
+        {
         TimeSpan t = TimeSpan.FromMilliseconds(milliSeconds);
         string answer;
         if (t.TotalMinutes < 1.0)
-        {
+            {
             answer = string.Format("{0}.{1}s", t.Seconds, (decimal)(t.Milliseconds / 100));
-        }
+            }
         else if (t.TotalHours < 1.0)
-        {
+            {
             answer = string.Format("{0}m {1:D2}s", t.TotalMinutes, t.Seconds);
-        }
+            }
         else if (t.TotalDays < 1.0)
-        {
+            {
             answer = string.Format("{0}h {1:D2}m {2:D2}s", (int)t.TotalHours, t.Minutes, t.Seconds);
-        }
+            }
         else
-        {
+            {
             answer = string.Format("{0}d {1}h {2:D2}m {3:D2}s", (int)t.Days, (int)t.Hours, t.Minutes, t.Seconds);
-        }
+            }
 
         return answer;
-    }
+        }
 
     public static MirDirection PreviousDir(MirDirection d)
-    {
-        switch (d)
         {
+        switch (d)
+            {
             case MirDirection.Up:
                 return MirDirection.UpLeft;
             case MirDirection.UpRight:
@@ -2201,12 +2203,12 @@ public static class Functions
             case MirDirection.UpLeft:
                 return MirDirection.Left;
             default: return d;
+            }
         }
-    }
     public static MirDirection NextDir(MirDirection d)
-    {
-        switch (d)
         {
+        switch (d)
+            {
             case MirDirection.Up:
                 return MirDirection.UpRight;
             case MirDirection.UpRight:
@@ -2224,46 +2226,46 @@ public static class Functions
             case MirDirection.UpLeft:
                 return MirDirection.Up;
             default: return d;
+            }
         }
-    }
     public static MirDirection DirectionFromPoint(Point source, Point dest)
-    {
-        if (source.X < dest.X)
         {
+        if (source.X < dest.X)
+            {
             if (source.Y < dest.Y)
                 return MirDirection.DownRight;
             if (source.Y > dest.Y)
                 return MirDirection.UpRight;
             return MirDirection.Right;
-        }
+            }
 
         if (source.X > dest.X)
-        {
+            {
             if (source.Y < dest.Y)
                 return MirDirection.DownLeft;
             if (source.Y > dest.Y)
                 return MirDirection.UpLeft;
             return MirDirection.Left;
-        }
+            }
 
         return source.Y < dest.Y ? MirDirection.Down : MirDirection.Up;
-    }
+        }
 
 
 
     public static Size Add(this Size p1, Size p2)
-    {
+        {
         return new Size(p1.Width + p2.Width, p1.Height + p2.Height);
-    }
+        }
     public static Size Add(this Size p1, int width, int height)
-    {
+        {
         return new Size(p1.Width + width, p1.Height + height);
-    }
+        }
 
     public static Point PointMove(Point p, MirDirection d, int i)
-    {
-        switch (d)
         {
+        switch (d)
+            {
             case MirDirection.Up:
                 p.Offset(0, -i);
                 break;
@@ -2288,13 +2290,13 @@ public static class Functions
             case MirDirection.UpLeft:
                 p.Offset(-i, -i);
                 break;
-        }
+            }
         return p;
-    }
+        }
     public static Point Left(Point p, MirDirection d)
-    {
-        switch (d)
         {
+        switch (d)
+            {
             case MirDirection.Up:
                 p.Offset(-1, 0);
                 break;
@@ -2319,14 +2321,14 @@ public static class Functions
             case MirDirection.UpLeft:
                 p.Offset(-1, 1);
                 break;
-        }
+            }
         return p;
-    }
+        }
 
     public static Point Right(Point p, MirDirection d)
-    {
-        switch (d)
         {
+        switch (d)
+            {
             case MirDirection.Up:
                 p.Offset(1, 0);
                 break;
@@ -2343,7 +2345,7 @@ public static class Functions
                 p.Offset(-1, 0);
                 break;
             case MirDirection.DownLeft:
-                p.Offset(-1,-1);
+                p.Offset(-1, -1);
                 break;
             case MirDirection.Left:
                 p.Offset(0, -1);
@@ -2351,20 +2353,20 @@ public static class Functions
             case MirDirection.UpLeft:
                 p.Offset(1, -1);
                 break;
-        }
+            }
         return p;
-    }
+        }
 
     public static int MaxDistance(Point p1, Point p2)
-    {
+        {
         return Math.Max(Math.Abs(p1.X - p2.X), Math.Abs(p1.Y - p2.Y));
 
-    }
+        }
 
     public static MirDirection ReverseDirection(MirDirection dir)
-    {
-        switch (dir)
         {
+        switch (dir)
+            {
             case MirDirection.Up:
                 return MirDirection.Down;
             case MirDirection.UpRight:
@@ -2383,10 +2385,10 @@ public static class Functions
                 return MirDirection.DownRight;
             default:
                 return dir;
+            }
         }
-    }
     public static ItemInfo GetRealItem(ItemInfo Origin, ushort Level, MirClass job, List<ItemInfo> ItemList)
-    {
+        {
         if (Origin.ClassBased && Origin.LevelBased)
             return GetClassAndLevelBasedItem(Origin, job, Level, ItemList);
         if (Origin.ClassBased)
@@ -2394,47 +2396,47 @@ public static class Functions
         if (Origin.LevelBased)
             return GetLevelBasedItem(Origin, Level, ItemList);
         return Origin;
-    }
+        }
     public static ItemInfo GetLevelBasedItem(ItemInfo Origin, ushort level, List<ItemInfo> ItemList)
-    {
+        {
         ItemInfo output = Origin;
         for (int i = 0; i < ItemList.Count; i++)
-        {
+            {
             ItemInfo info = ItemList[i];
             if (info.Name.StartsWith(Origin.Name))
                 if ((info.RequiredType == RequiredType.Level) && (info.RequiredAmount <= level) && (output.RequiredAmount < info.RequiredAmount) && (Origin.RequiredGender == info.RequiredGender))
                     output = info;
-        }
+            }
         return output;
-    }
+        }
     public static ItemInfo GetClassBasedItem(ItemInfo Origin, MirClass job, List<ItemInfo> ItemList)
-    {
-        for (int i = 0; i < ItemList.Count; i++)
         {
+        for (int i = 0; i < ItemList.Count; i++)
+            {
             ItemInfo info = ItemList[i];
             if (info.Name.StartsWith(Origin.Name))
                 if (((byte)info.RequiredClass == (1 << (byte)job)) && (Origin.RequiredGender == info.RequiredGender))
                     return info;
-        }
+            }
         return Origin;
-    }
+        }
+
 
     public static ItemInfo GetClassAndLevelBasedItem(ItemInfo Origin, MirClass job, ushort level, List<ItemInfo> ItemList)
-    {
+        {
         ItemInfo output = Origin;
         for (int i = 0; i < ItemList.Count; i++)
-        {
+            {
             ItemInfo info = ItemList[i];
             if (info.Name.StartsWith(Origin.Name))
                 if ((byte)info.RequiredClass == (1 << (byte)job))
                     if ((info.RequiredType == RequiredType.Level) && (info.RequiredAmount <= level) && (output.RequiredAmount <= info.RequiredAmount) && (Origin.RequiredGender == info.RequiredGender))
                         output = info;
-        }
+            }
         return output;
-    }
-
+        }
     public static string StringOverLines(string line, int maxWordsPerLine, int maxLettersPerLine)
-    {
+        {
         string newString = string.Empty;
 
         string[] words = line.Split(' ');
@@ -2442,91 +2444,91 @@ public static class Functions
         int lineLength = 0;
 
         for (int i = 0; i < words.Length; i++)
-        {
+            {
             lineLength += words[i].Length + 1;
 
             newString += words[i] + " ";
             if (i > 0 && i % maxWordsPerLine == 0 && lineLength > maxLettersPerLine)
-            {
+                {
                 lineLength = 0;
                 newString += "\r\n";
+                }
             }
-        }
 
         return newString;
-    }
+        }
 
     public static byte[] ImageToByteArray(Image imageIn)
-    {
+        {
         MemoryStream ms = new MemoryStream();
         imageIn.Save(ms, ImageFormat.Gif);
         return ms.ToArray();
-    }
+        }
 
     public static Image ByteArrayToImage(byte[] byteArrayIn)
-    {
+        {
         MemoryStream ms = new MemoryStream(byteArrayIn);
         Image returnImage = Image.FromStream(ms);
         return returnImage;
-    }
+        }
 
     public static IEnumerable<byte[]> SplitArray(byte[] value, int bufferLength)
-    {
+        {
         int countOfArray = value.Length / bufferLength;
         if (value.Length % bufferLength > 0)
             countOfArray++;
         for (int i = 0; i < countOfArray; i++)
-        {
+            {
             yield return value.Skip(i * bufferLength).Take(bufferLength).ToArray();
+            }
         }
-    }
 
     public static byte[] CombineArray(List<byte[]> arrays)
-    {
+        {
         byte[] rv = new byte[arrays.Sum(x => x.Length)];
         int offset = 0;
         foreach (byte[] array in arrays)
-        {
+            {
             System.Buffer.BlockCopy(array, 0, rv, offset, array.Length);
             offset += array.Length;
-        }
+            }
         return rv;
+        }
     }
-}
 
 public class SelectInfo
-{
+    {
     public int Index;
     public string Name = string.Empty;
     public ushort Level;
     public MirClass Class;
     public MirGender Gender;
     public DateTime LastAccess;
-    
-        public SelectInfo()
+
+    public SelectInfo()
         { }
-        public SelectInfo(BinaryReader reader)
+    public SelectInfo(BinaryReader reader)
         {
-            Index = reader.ReadInt32();
-            Name = reader.ReadString();
-            Level = reader.ReadUInt16();
-            Class = (MirClass)reader.ReadByte();
-            Gender = (MirGender)reader.ReadByte();
-            LastAccess = DateTime.FromBinary(reader.ReadInt64());
+        Index = reader.ReadInt32();
+        Name = reader.ReadString();
+        Level = reader.ReadUInt16();
+        Class = (MirClass)reader.ReadByte();
+        Gender = (MirGender)reader.ReadByte();
+        LastAccess = DateTime.FromBinary(reader.ReadInt64());
         }
-        public void Save(BinaryWriter writer)
+    public void Save(BinaryWriter writer)
         {
-            writer.Write(Index);
-            writer.Write(Name);
-            writer.Write(Level);
-            writer.Write((byte)Class);
-            writer.Write((byte)Gender);
-            writer.Write(LastAccess.ToBinary());
+        writer.Write(Index);
+        writer.Write(Name);
+        writer.Write(Level);
+        writer.Write((byte)Class);
+        writer.Write((byte)Gender);
+        writer.Write(LastAccess.ToBinary());
         }
-}
+    }
 
 public class ItemInfo
-{
+    {
     public int Index;
     public string Name = string.Empty;
     public ItemType Type;
@@ -2563,7 +2565,7 @@ public class ItemInfo
     public bool CanFastRun;
     public bool CanAwakening;
     public byte MaxAcRate, MaxMacRate, Holy, Freezing, PoisonAttack, HpDrainRate;
-    
+
     public BindMode Bind = BindMode.none;
     public byte Reflect;
     public SpecialItemMode Unique = SpecialItemMode.None;
@@ -2573,35 +2575,113 @@ public class ItemInfo
 
 
     public bool IsConsumable
-    {
+        {
         get { return Type == ItemType.Potion || Type == ItemType.Scroll || Type == ItemType.Food || Type == ItemType.Transform || Type == ItemType.Script; }
-    }
+        }
 
     public string FriendlyName
-    {
-        get 
         {
+        get
+            {
             string temp = Name;
             temp = Regex.Replace(temp, @"\d+$", string.Empty); //hides end numbers
             temp = Regex.Replace(temp, @"\[[^]]*\]", string.Empty); //hides square brackets
 
             return temp;
+            }
         }
-    }
-    
+
     public ItemInfo()
-    {
-    }
+        {
+        }
+
+    public ItemInfo(MySqlDataReader readerItemInfo)
+        {
+
+        Index = Convert.ToUInt16(readerItemInfo["IndexID"]);
+        Accuracy = Convert.ToByte(readerItemInfo["Accuracy"]);
+        Agility = Convert.ToByte(readerItemInfo["Agility"]);
+        AttackSpeed = Convert.ToSByte(readerItemInfo["AttackSpeed"]);
+        BagWeight = Convert.ToByte(readerItemInfo["BagWeight"]);
+        CanAwakening = Convert.ToBoolean(readerItemInfo["CanAwakening"]);
+        CanFastRun = Convert.ToBoolean(readerItemInfo["CanFastRun"]);
+        CanMine = Convert.ToBoolean(readerItemInfo["CanMine"]);
+        ClassBased = Convert.ToBoolean(readerItemInfo["ClassBased"]);
+        ShowGroupPickup = Convert.ToBoolean(readerItemInfo["ShowGroupPickup"]);
+        CriticalDamage = Convert.ToByte(readerItemInfo["CriticalDamage"]);
+        CriticalRate = Convert.ToByte(readerItemInfo["CriticalRate"]);
+        Effect = Convert.ToByte(readerItemInfo["Effect"]);
+        Freezing = Convert.ToByte(readerItemInfo["Freezing"]);
+        SpellRecovery = Convert.ToByte(readerItemInfo["SpellRecovery"]);
+        HandWeight = Convert.ToByte(readerItemInfo["HandWeight"]);
+        HealthRecovery = Convert.ToByte(readerItemInfo["HealthRecovery"]);
+        Holy = Convert.ToByte(readerItemInfo["Holy"]);
+        HpDrainRate = Convert.ToByte(readerItemInfo["HpDrainRate"]);
+        HPrate = Convert.ToByte(readerItemInfo["HPrate"]);
+        Light = Convert.ToByte(readerItemInfo["Light"]);
+        Luck = Convert.ToSByte(readerItemInfo["Luck"]);
+        LevelBased = Convert.ToBoolean(readerItemInfo["LevelBased"]);
+        NeedIdentify = Convert.ToBoolean(readerItemInfo["NeedIdentify"]);
+        StartItem = Convert.ToBoolean(readerItemInfo["StartItem"]);
+        MagicResist = Convert.ToByte(readerItemInfo["MagicResist"]);
+        MaxAC = Convert.ToByte(readerItemInfo["MaxAC"]);
+        MaxAcRate = Convert.ToByte(readerItemInfo["MaxAcRate"]);
+        MaxDC = Convert.ToByte(readerItemInfo["MaxDC"]);
+        MaxMAC = Convert.ToByte(readerItemInfo["MaxMAC"]);
+        MaxMacRate = Convert.ToByte(readerItemInfo["MaxMacRate"]);
+        MaxMC = Convert.ToByte(readerItemInfo["MaxMC"]);
+        MaxSC = Convert.ToByte(readerItemInfo["MaxSC"]);
+        MinAC = Convert.ToByte(readerItemInfo["MinAC"]);
+        MinDC = Convert.ToByte(readerItemInfo["MinDC"]);
+        MinMAC = Convert.ToByte(readerItemInfo["MinMAC"]);
+        MinMC = Convert.ToByte(readerItemInfo["MinMC"]);
+        MinSC = Convert.ToByte(readerItemInfo["MinSC"]);
+        MPrate = Convert.ToByte(readerItemInfo["MPrate"]);
+        PoisonAttack = Convert.ToByte(readerItemInfo["PoisonAttack"]);
+        PoisonRecovery = Convert.ToByte(readerItemInfo["PoisonRecovery"]);
+        PoisonResist = Convert.ToByte(readerItemInfo["PoisonResist"]);
+        Durability = Convert.ToUInt16(readerItemInfo["Durability"]);
+
+        Reflect = Convert.ToByte(readerItemInfo["Reflect"]);
+        RequiredAmount = Convert.ToByte(readerItemInfo["RequiredAmount"]);
+        Strong = Convert.ToByte(readerItemInfo["Strong"]);
+        WearWeight = Convert.ToByte(readerItemInfo["WearWeight"]);
+        Weight = Convert.ToByte(readerItemInfo["Weight"]);
+        Price = Convert.ToUInt32(readerItemInfo["Price"]);
+        StackSize = Convert.ToUInt32(readerItemInfo["StackSize"]);
+        Bind = (BindMode)Convert.ToUInt16(readerItemInfo["Bind"]);
+        Grade = (ItemGrade)Convert.ToUInt16(readerItemInfo["Grade"]);
+
+        RandomStatsId = Convert.ToByte(readerItemInfo["RandomStatsId"]);
+       // if ((readerItemInfo != null) && (RandomStatsId < Server.Settings.RandomItemStatsList.Count))
+        //    {
+       //     RandomStats = Server.Settings.RandomItemStatsList[RandomStatsId];
+       //     }
+        //RandomStats = (RandomItemStat)readerItemInfo["RandomStats"];
+        Name = readerItemInfo["Name"].ToString();
+        RequiredClass = (RequiredClass)Convert.ToByte(readerItemInfo["RequiredClass"]);
+        Type = (ItemType)Convert.ToByte(readerItemInfo["Type"]);
+        Unique = (SpecialItemMode)Convert.ToUInt16(readerItemInfo["Unique_"]);
+        ToolTip = readerItemInfo["ToolTip"].ToString();
+        RequiredGender = (RequiredGender)Convert.ToByte(readerItemInfo["RequiredGender"]);
+        RequiredType = (RequiredType)Convert.ToByte(readerItemInfo["RequiredType"]);
+        Set = (ItemSet)Convert.ToByte(readerItemInfo["Set_"]);
+        HP = Convert.ToUInt16(readerItemInfo["HP"]);
+        MP = Convert.ToUInt16(readerItemInfo["MP"]);
+        Image = Convert.ToUInt16(readerItemInfo["Image"]);
+        Shape = Convert.ToInt16(readerItemInfo["Shape"]);
+        }
+
     public ItemInfo(BinaryReader reader, int version = int.MaxValue, int Customversion = int.MaxValue)
-    {
+        {
         Index = reader.ReadInt32();
         Name = reader.ReadString();
-        Type = (ItemType) reader.ReadByte();
+        Type = (ItemType)reader.ReadByte();
         if (version >= 40) Grade = (ItemGrade)reader.ReadByte();
-        RequiredType = (RequiredType) reader.ReadByte();
-        RequiredClass = (RequiredClass) reader.ReadByte();
-        RequiredGender = (RequiredGender) reader.ReadByte();
-        if(version >= 17) Set = (ItemSet)reader.ReadByte();
+        RequiredType = (RequiredType)reader.ReadByte();
+        RequiredClass = (RequiredClass)reader.ReadByte();
+        RequiredGender = (RequiredGender)reader.ReadByte();
+        if (version >= 17) Set = (ItemSet)reader.ReadByte();
 
         Shape = version >= 30 ? reader.ReadInt16() : reader.ReadSByte();
         Weight = reader.ReadByte();
@@ -2625,15 +2705,15 @@ public class ItemInfo
         MinSC = reader.ReadByte();
         MaxSC = reader.ReadByte();
         if (version < 25)
-        {
+            {
             HP = reader.ReadByte();
             MP = reader.ReadByte();
-        }
+            }
         else
-        {
+            {
             HP = reader.ReadUInt16();
             MP = reader.ReadUInt16();
-        }
+            }
         Accuracy = reader.ReadByte();
         Agility = reader.ReadByte();
 
@@ -2648,7 +2728,7 @@ public class ItemInfo
 
         if (version >= 9) Effect = reader.ReadByte();
         if (version >= 20)
-        {
+            {
             Strong = reader.ReadByte();
             MagicResist = reader.ReadByte();
             PoisonResist = reader.ReadByte();
@@ -2671,67 +2751,67 @@ public class ItemInfo
             Freezing = reader.ReadByte();
             PoisonAttack = reader.ReadByte();
             if (version < 55)
-            {
+                {
                 Bind = (BindMode)reader.ReadByte();
-            }
+                }
             else
-            {
+                {
                 Bind = (BindMode)reader.ReadInt16();
+                }
+
             }
-            
-        }
         if (version >= 21)
-        {
+            {
             Reflect = reader.ReadByte();
             HpDrainRate = reader.ReadByte();
             Unique = (SpecialItemMode)reader.ReadInt16();
-        }
+            }
         if (version >= 24)
-        {
+            {
             RandomStatsId = reader.ReadByte();
-        }
+            }
         else
-        {
+            {
             RandomStatsId = 255;
             if ((Type == ItemType.Weapon) || (Type == ItemType.Armour) || (Type == ItemType.Helmet) || (Type == ItemType.Necklace) || (Type == ItemType.Bracelet) || (Type == ItemType.Ring) || (Type == ItemType.Mount))
                 RandomStatsId = (byte)Type;
             if ((Type == ItemType.Belt) || (Type == ItemType.Boots))
                 RandomStatsId = 7;
-        }
+            }
 
         if (version >= 40) CanFastRun = reader.ReadBoolean();
 
         if (version >= 41)
-        {
+            {
             CanAwakening = reader.ReadBoolean();
             bool isTooltip = reader.ReadBoolean();
             if (isTooltip)
                 ToolTip = reader.ReadString();
-        }
+            }
         if (version < 70) //before db version 70 all specialitems had wedding rings disabled, after that it became a server option
-        {
-            if ((Type == ItemType.Ring) &&  (Unique != SpecialItemMode.None))
+            {
+            if ((Type == ItemType.Ring) && (Unique != SpecialItemMode.None))
                 Bind |= BindMode.NoWeddingRing;
+            }
         }
-    }
 
 
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Index);
         writer.Write(Name);
-        writer.Write((byte) Type);
-        writer.Write((byte) Grade);
-        writer.Write((byte) RequiredType);
-        writer.Write((byte) RequiredClass);
-        writer.Write((byte) RequiredGender);
-        writer.Write((byte) Set);
+        writer.Write((byte)Type);
+        writer.Write((byte)Grade);
+        writer.Write((byte)RequiredType);
+        writer.Write((byte)RequiredClass);
+        writer.Write((byte)RequiredGender);
+        writer.Write((byte)Set);
 
         writer.Write(Shape);
         writer.Write(Weight);
         writer.Write(Light);
-        writer.Write(RequiredAmount);     
+        writer.Write(RequiredAmount);
 
         writer.Write(Image);
         writer.Write(Durability);
@@ -2792,14 +2872,14 @@ public class ItemInfo
         writer.Write((short)Unique);
         writer.Write(RandomStatsId);
         writer.Write(CanFastRun);
-		writer.Write(CanAwakening);
+        writer.Write(CanAwakening);
         writer.Write(ToolTip != null);
         if (ToolTip != null)
             writer.Write(ToolTip);
-    }
+        }
 
     public static ItemInfo FromText(string text)
-    {
+        {
         string[] data = text.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
         if (data.Length < 33) return null;
@@ -2875,32 +2955,32 @@ public class ItemInfo
         if (!byte.TryParse(data[59], out info.RandomStatsId)) return null;
         if (!bool.TryParse(data[60], out info.CanMine)) return null;
         if (!bool.TryParse(data[61], out info.CanFastRun)) return null;
-		if (!bool.TryParse(data[62], out info.CanAwakening)) return null;
+        if (!bool.TryParse(data[62], out info.CanAwakening)) return null;
         if (data[63] == "-")
             info.ToolTip = "";
         else
-        {
+            {
             info.ToolTip = data[63];
             info.ToolTip = info.ToolTip.Replace("&^&", "\r\n");
-        }
-            
+            }
+
         return info;
 
-    }
+        }
 
     public string ToText()
-    {
+        {
         string TransToolTip = ToolTip;
         int length = TransToolTip.Length;
 
         if (TransToolTip == null || TransToolTip.Length == 0)
-        {
+            {
             TransToolTip = "-";
-        }
+            }
         else
-        {
+            {
             TransToolTip = TransToolTip.Replace("\r\n", "&^&");
-        }
+            }
 
         return string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26}," +
                              "{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40},{41},{42},{43},{44},{45},{46},{47},{48},{49},{50},{51}," +
@@ -2910,21 +2990,24 @@ public class ItemInfo
             StackSize, Effect, Strong, MagicResist, PoisonResist, HealthRecovery, SpellRecovery, PoisonRecovery, HPrate, MPrate, CriticalRate, CriticalDamage, NeedIdentify,
             ShowGroupPickup, MaxAcRate, MaxMacRate, Holy, Freezing, PoisonAttack, ClassBased, LevelBased, (short)Bind, Reflect, HpDrainRate, (short)Unique,
             RandomStatsId, CanMine, CanFastRun, CanAwakening, TransToolTip);
-    }
+        }
 
     public override string ToString()
-    {
+        {
         return string.Format("{0}: {1}", Index, Name);
-    }
+        }
 
-}
+    }
 public class UserItem
-{
+    {
     public ulong UniqueID;
     public int ItemIndex;
 
     public ItemInfo Info;
     public ushort CurrentDura, MaxDura;
+    public string Store;
+    public int InitialPosition;
+
     public uint Count = 1, GemCount = 0;
 
     public byte AC, MAC, DC, MC, SC, Accuracy, Agility, HP, MP, Strong, MagicResist, PoisonResist, HealthRecovery, ManaRecovery, PoisonRecovery, CriticalRate, CriticalDamage, Freezing, PoisonAttack;
@@ -2940,47 +3023,113 @@ public class UserItem
 
     public int WeddingRing = -1;
 
+    public ulong Attached;
+    public bool IsAttached = false;
+
+    public int AwakeType;
+    public bool IsAwake = false;
+
     public UserItem[] Slots = new UserItem[5];
 
+    public DateTime ExpiryDate;
     public DateTime BuybackExpiryDate;
-
     public ExpireInfo ExpireInfo;
 
-	public Awake Awake = new Awake();
+    public Awake Awake = new Awake();
     public bool IsAdded
-    {
-        get
         {
+        get
+            {
             return AC != 0 || MAC != 0 || DC != 0 || MC != 0 || SC != 0 || Accuracy != 0 || Agility != 0 || HP != 0 || MP != 0 || AttackSpeed != 0 || Luck != 0 || Strong != 0 || MagicResist != 0 || PoisonResist != 0 ||
                 HealthRecovery != 0 || ManaRecovery != 0 || PoisonRecovery != 0 || CriticalRate != 0 || CriticalDamage != 0 || Freezing != 0 || PoisonAttack != 0;
+            }
         }
-    }
 
     public uint Weight
-    {
-        get { return Info.Type == ItemType.Amulet ? Info.Weight : Info.Weight*Count; }
-    }
+        {
+        get { return Info.Type == ItemType.Amulet ? Info.Weight : Info.Weight * Count; }
+        }
 
     public string Name
-    {
-        get { return Count > 1 ? string.Format("{0} ({1})", Info.Name, Count) : Info.Name; }   
-    }
-    
+        {
+        get { return Count > 1 ? string.Format("{0} ({1})", Info.Name, Count) : Info.Name; }
+        }
+
     public string FriendlyName
-    {
+        {
         get { return Count > 1 ? string.Format("{0} ({1})", Info.FriendlyName, Count) : Info.FriendlyName; }
-    }
+        }
 
     public UserItem(ItemInfo info)
-    {
+        {
         SoulBoundId = -1;
         ItemIndex = info.Index;
         Info = info;
 
         SetSlotSize();
-    }
+        }
+
+    public UserItem(MySqlDataReader readerInventoryDB)
+        {
+        UniqueID = Convert.ToUInt64(readerInventoryDB["UniqueID"]);
+        ItemIndex = Convert.ToInt32(readerInventoryDB["ItemIndex"]);
+
+        Attached = Convert.ToUInt64(readerInventoryDB["Attached"]);
+        IsAttached = Convert.ToBoolean(readerInventoryDB["IsAttached"]);
+
+        AwakeType = Convert.ToInt32(readerInventoryDB["AwakeType"]);
+        IsAwake = Convert.ToBoolean(readerInventoryDB["IsAwake"]);
+
+        CurrentDura = Convert.ToUInt16(readerInventoryDB["CurrentDura"]);
+        MaxDura = Convert.ToUInt16(readerInventoryDB["MaxDura"]);
+        Store = readerInventoryDB["Store"].ToString();
+        InitialPosition = Convert.ToInt32(readerInventoryDB["Position"]);
+        Count = Convert.ToUInt32(readerInventoryDB["Count"]);
+
+        AC = Convert.ToByte(readerInventoryDB["AC"]);
+        MAC = Convert.ToByte(readerInventoryDB["MAC"]);
+        DC = Convert.ToByte(readerInventoryDB["DC"]);
+        MC = Convert.ToByte(readerInventoryDB["MC"]);
+        SC = Convert.ToByte(readerInventoryDB["SC"]);
+
+        Accuracy = Convert.ToByte(readerInventoryDB["Accuracy"]);
+        Agility = Convert.ToByte(readerInventoryDB["Agility"]);
+        HP = Convert.ToByte(readerInventoryDB["HP"]);
+        MP = Convert.ToByte(readerInventoryDB["MP"]);
+
+        AttackSpeed = Convert.ToSByte(readerInventoryDB["AttackSpeed"]);
+        Luck = Convert.ToSByte(readerInventoryDB["Luck"]);
+
+        SoulBoundId = Convert.ToInt32(readerInventoryDB["SoulBoundId"]);
+        //byte Bools = Convert.ToUInt16(readerInventoryDB["IndexID"]);
+        Identified = Convert.ToBoolean(readerInventoryDB["Identified"]);
+        Cursed = Convert.ToBoolean(readerInventoryDB["Cursed"]);
+        Strong = Convert.ToByte(readerInventoryDB["Strong"]);
+        MagicResist = Convert.ToByte(readerInventoryDB["MagicResist"]);
+        PoisonResist = Convert.ToByte(readerInventoryDB["PoisonResist"]);
+        HealthRecovery = Convert.ToByte(readerInventoryDB["HealthRecovery"]);
+        ManaRecovery = Convert.ToByte(readerInventoryDB["ManaRecovery"]);
+        PoisonRecovery = Convert.ToByte(readerInventoryDB["PoisonRecovery"]);
+        CriticalRate = Convert.ToByte(readerInventoryDB["CriticalRate"]);
+        CriticalDamage = Convert.ToByte(readerInventoryDB["CriticalDamage"]);
+        Freezing = Convert.ToByte(readerInventoryDB["Freezing"]);
+        PoisonAttack = Convert.ToByte(readerInventoryDB["PoisonAttack"]);
+
+        GemCount = Convert.ToUInt32(readerInventoryDB["GemCount"]);
+
+        RefinedValue = (RefinedValue)Convert.ToByte(readerInventoryDB["RefinedValue"]);
+        RefineAdded = Convert.ToByte(readerInventoryDB["RefineAdded"]);
+        WeddingRing = Convert.ToInt32(readerInventoryDB["WeddingRing"]);
+
+        ExpiryDate = readerInventoryDB.GetDateTime(readerInventoryDB.GetOrdinal("ExpireInfo"));
+        //ExpireInfo = new ExpireInfo(reader, version, Customversion);
+
+        // ExpireInfo = ExpiryDate;
+
+
+        }
     public UserItem(BinaryReader reader, int version = int.MaxValue, int Customversion = int.MaxValue)
-    {
+        {
         UniqueID = reader.ReadUInt64();
         ItemIndex = reader.ReadInt32();
 
@@ -3005,7 +3154,7 @@ public class UserItem
 
         if (version <= 19) return;
         SoulBoundId = reader.ReadInt32();
-        byte Bools = reader.ReadByte();        
+        byte Bools = reader.ReadByte();
         Identified = (Bools & 0x01) == 0x01;
         Cursed = (Bools & 0x02) == 0x02;
         Strong = reader.ReadByte();
@@ -3018,17 +3167,17 @@ public class UserItem
         CriticalDamage = reader.ReadByte();
         Freezing = reader.ReadByte();
         PoisonAttack = reader.ReadByte();
-        
+
 
         if (version <= 31) return;
 
         int count = reader.ReadInt32();
         for (int i = 0; i < count; i++)
-        {
+            {
             if (reader.ReadBoolean()) continue;
             UserItem item = new UserItem(reader, version, Customversion);
             Slots[i] = item;
-        }
+            }
 
         if (version <= 38) return;
 
@@ -3048,14 +3197,14 @@ public class UserItem
         if (version < 65) return;
 
         if (reader.ReadBoolean())
-        {
+            {
             ExpireInfo = new ExpireInfo(reader, version, Customversion);
+            }
+
         }
 
-    }
-
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(UniqueID);
         writer.Write(ItemIndex);
 
@@ -3078,7 +3227,7 @@ public class UserItem
         writer.Write(AttackSpeed);
         writer.Write(Luck);
         writer.Write(SoulBoundId);
-        byte Bools=0;        
+        byte Bools = 0;
         if (Identified) Bools |= 0x01;
         if (Cursed) Bools |= 0x02;
         writer.Write(Bools);
@@ -3095,16 +3244,16 @@ public class UserItem
 
         writer.Write(Slots.Length);
         for (int i = 0; i < Slots.Length; i++)
-        {
+            {
             writer.Write(Slots[i] == null);
             if (Slots[i] == null) continue;
 
             Slots[i].Save(writer);
-        }
+            }
 
         writer.Write(GemCount);
 
-       
+
         Awake.Save(writer);
 
         writer.Write((byte)RefinedValue);
@@ -3115,21 +3264,21 @@ public class UserItem
         writer.Write(ExpireInfo != null);
 
         if (ExpireInfo != null)
-        {
+            {
             ExpireInfo.Save(writer);
+            }
         }
-    }
 
 
     public uint Price()
-    {
+        {
         if (Info == null) return 0;
 
         uint p = Info.Price;
 
 
         if (Info.Durability > 0)
-        {
+            {
             float r = ((Info.Price / 2F) / Info.Durability);
 
             p = (uint)(MaxDura * r);
@@ -3140,50 +3289,50 @@ public class UserItem
                 r = 0;
 
             p = (uint)Math.Floor(p / 2F + ((p / 2F) * r) + Info.Price / 2F);
-        }
+            }
 
 
         p = (uint)(p * ((AC + MAC + DC + MC + SC + Accuracy + Agility + HP + MP + AttackSpeed + Luck + Strong + MagicResist + PoisonResist + HealthRecovery + ManaRecovery + PoisonRecovery + CriticalRate + CriticalDamage + Freezing + PoisonAttack) * 0.1F + 1F));
-        
+
 
         return p * Count;
-    }
+        }
     public uint RepairPrice()
-    {
+        {
         if (Info == null || Info.Durability == 0) return 0;
 
         uint p = Info.Price;
 
         if (Info.Durability > 0)
-        {
+            {
             p = (uint)Math.Floor(MaxDura * ((Info.Price / 2F) / Info.Durability) + Info.Price / 2F);
             p = (uint)(p * ((AC + MAC + DC + MC + SC + Accuracy + Agility + HP + MP + AttackSpeed + Luck + Strong + MagicResist + PoisonResist + HealthRecovery + ManaRecovery + PoisonRecovery + CriticalRate + CriticalDamage + Freezing + PoisonAttack) * 0.1F + 1F));
 
-        }
+            }
 
         return (p * Count) - Price();
-    }
+        }
 
     public uint Quality()
-    {
+        {
         uint q = (uint)(AC + MAC + DC + MC + SC + Accuracy + Agility + HP + MP + AttackSpeed + Luck + Strong + MagicResist + PoisonResist + HealthRecovery + ManaRecovery + PoisonRecovery + CriticalRate + CriticalDamage + Freezing + PoisonAttack + Awake.getAwakeLevel() + 1);
 
         return q;
-    }
+        }
 
     public uint AwakeningPrice()
-    {
+        {
         if (Info == null) return 0;
 
         uint p = 1500;
 
         p = (uint)((p * (1 + Awake.getAwakeLevel() * 2)) * (uint)Info.Grade);
-       
+
         return p;
-    }
+        }
 
     public uint DisassemblePrice()
-    {
+        {
         if (Info == null) return 0;
 
         uint p = 1500 * (uint)Info.Grade;
@@ -3191,10 +3340,10 @@ public class UserItem
         p = (uint)(p * ((AC + MAC + DC + MC + SC + Accuracy + Agility + HP + MP + AttackSpeed + Luck + Strong + MagicResist + PoisonResist + HealthRecovery + ManaRecovery + PoisonRecovery + CriticalRate + CriticalDamage + Freezing + PoisonAttack + Awake.getAwakeLevel()) * 0.1F + 1F));
 
         return p;
-    }
+        }
 
     public uint DowngradePrice()
-    {
+        {
         if (Info == null) return 0;
 
         uint p = 3000;
@@ -3202,10 +3351,10 @@ public class UserItem
         p = (uint)((p * (1 + (Awake.getAwakeLevel() + 1) * 2)) * (uint)Info.Grade);
 
         return p;
-    }
+        }
 
     public uint ResetPrice()
-    {
+        {
         if (Info == null) return 0;
 
         uint p = 3000 * (uint)Info.Grade;
@@ -3213,13 +3362,13 @@ public class UserItem
         p = (uint)(p * ((AC + MAC + DC + MC + SC + Accuracy + Agility + HP + MP + AttackSpeed + Luck + Strong + MagicResist + PoisonResist + HealthRecovery + ManaRecovery + PoisonRecovery + CriticalRate + CriticalDamage + Freezing + PoisonAttack) * 0.2F + 1F));
 
         return p;
-    }
+        }
     public void SetSlotSize() //set slot size in db?
-    {
+        {
         int amount = 0;
 
         switch (Info.Type)
-        {
+            {
             case ItemType.Mount:
                 if (Info.Shape < 7)
                     amount = 4;
@@ -3230,25 +3379,25 @@ public class UserItem
                 if (Info.Shape == 49 || Info.Shape == 50)
                     amount = 5;
                 break;
-        }
+            }
 
         if (amount == Slots.Length) return;
 
         Array.Resize(ref Slots, amount);
-    }
+        }
 
     public ushort Image
-    {
-        get
         {
-            switch (Info.Type)
+        get
             {
+            switch (Info.Type)
+                {
                 #region Amulet and Poison Stack Image changes
                 case ItemType.Amulet:
                     if (Info.StackSize > 0)
-                    {
-                        switch (Info.Shape)
                         {
+                        switch (Info.Shape)
+                            {
                             case 0: //Amulet
                                 if (Count >= 300) return 3662;
                                 if (Count >= 200) return 3661;
@@ -3264,21 +3413,21 @@ public class UserItem
                                 if (Count >= 100) return 2961;
                                 if (Count >= 50) return 3671;
                                 return 3670;
+                            }
                         }
-                    }
                     break;
                 }
 
             #endregion
-            
-			return Info.Image;
-			}
-		}
+
+            return Info.Image;
+            }
+        }
 
     public UserItem Clone()
-    {
-        UserItem item = new UserItem(Info)
         {
+        UserItem item = new UserItem(Info)
+            {
             UniqueID = UniqueID,
             CurrentDura = CurrentDura,
             MaxDura = MaxDura,
@@ -3318,36 +3467,43 @@ public class UserItem
             RefinedValue = RefinedValue,
             RefineAdded = RefineAdded,
 
+            IsAwake = IsAwake,
+            AwakeType = AwakeType,
+            IsAttached = IsAttached,
+            Attached = Attached,
+
             ExpireInfo = ExpireInfo
+
             };
 
         return item;
+        }
+
     }
 
-}
-
 public class ExpireInfo
-{
+    {
     public DateTime ExpiryDate;
 
     public ExpireInfo()
-    {
+        {
 
-    }
+        }
+
 
     public ExpireInfo(BinaryReader reader, int version = int.MaxValue, int Customversion = int.MaxValue)
-    {
+        {
         ExpiryDate = DateTime.FromBinary(reader.ReadInt64());
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(ExpiryDate.ToBinary());
+        }
     }
-}
 
 public class GameShopItem
-{
+    {
     public int ItemIndex;
     public int GIndex;
     public ItemInfo Info;
@@ -3361,13 +3517,29 @@ public class GameShopItem
     public bool Deal = false;
     public bool TopItem = false;
     public DateTime Date;
-    
-    public GameShopItem()
-    {
-    }
 
+    public GameShopItem()
+        {
+        }
+
+    public GameShopItem(MySqlDataReader readerGameShopItem)
+        {
+        ItemIndex = Convert.ToInt32(readerGameShopItem["ItemIndex"]);
+        GIndex = Convert.ToInt32(readerGameShopItem["GIndex"]);
+        GoldPrice = Convert.ToUInt32(readerGameShopItem["GoldPrice"]);
+        CreditPrice = Convert.ToUInt32(readerGameShopItem["CreditPrice"]);
+        Count = Convert.ToUInt32(readerGameShopItem["Count"]);
+        Class = readerGameShopItem["Class"].ToString();
+        Category = readerGameShopItem["Category"].ToString();
+        Stock = Convert.ToInt32(readerGameShopItem["Stock"]);
+        iStock = Convert.ToBoolean(readerGameShopItem["iStock"]);
+        Deal = Convert.ToBoolean(readerGameShopItem["Deal"]);
+        TopItem = Convert.ToBoolean(readerGameShopItem["TopItem"]);
+        Date = readerGameShopItem.GetDateTime(readerGameShopItem.GetOrdinal("Date"));
+        }
+    
     public GameShopItem(BinaryReader reader, int version = int.MaxValue, int Customversion = int.MaxValue)
-    {
+        {
         ItemIndex = reader.ReadInt32();
         GIndex = reader.ReadInt32();
         GoldPrice = reader.ReadUInt32();
@@ -3380,10 +3552,10 @@ public class GameShopItem
         Deal = reader.ReadBoolean();
         TopItem = reader.ReadBoolean();
         Date = DateTime.FromBinary(reader.ReadInt64());
-    }
+        }
 
     public GameShopItem(BinaryReader reader, bool packet = false)
-    {
+        {
         ItemIndex = reader.ReadInt32();
         GIndex = reader.ReadInt32();
         Info = new ItemInfo(reader);
@@ -3397,10 +3569,10 @@ public class GameShopItem
         Deal = reader.ReadBoolean();
         TopItem = reader.ReadBoolean();
         Date = DateTime.FromBinary(reader.ReadInt64());
-    }
+        }
 
     public void Save(BinaryWriter writer, bool packet = false)
-    {
+        {
         writer.Write(ItemIndex);
         writer.Write(GIndex);
         if (packet) Info.Save(writer);
@@ -3414,17 +3586,18 @@ public class GameShopItem
         writer.Write(Deal);
         writer.Write(TopItem);
         writer.Write(Date.ToBinary());
-    }
+        }
 
     public override string ToString()
-    {
+        {
         return string.Format("{0}: {1}", GIndex, Info.Name);
+        }
+
     }
 
-}
-
 public class Awake
-{
+    {
+
     //Awake Option
     public static byte AwakeSuccessRate = 70;
     public static byte AwakeHitRate = 70;
@@ -3438,51 +3611,50 @@ public class Awake
     public static List<List<byte>[]> AwakeMaterials = new List<List<byte>[]>();
 
     public AwakeType type;
-    List<byte> listAwake = new List<byte>();
-
+    public List<byte> listAwake = new List<byte>();
     public Awake(BinaryReader reader)
-    {
+        {
         type = (AwakeType)reader.ReadByte();
         int count = reader.ReadInt32();
         for (int i = 0; i < count; i++)
-        {
+            {
             listAwake.Add(reader.ReadByte());
+            }
         }
-    }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write((byte)type);
         writer.Write(listAwake.Count);
         foreach (byte value in listAwake)
-        {
+            {
             writer.Write(value);
+            }
         }
-    }
 
     public Awake()
-    {
+        {
         type = AwakeType.None;
-    }
+        }
 
     public bool IsMaxLevel() { return listAwake.Count == Awake.MaxAwakeLevel; }
 
     public int getAwakeLevel() { return listAwake.Count; }
 
     public byte getAwakeValue()
-    {
+        {
         byte total = 0;
 
         foreach (byte value in listAwake)
-        {
+            {
             total += value;
-        }
+            }
 
         return total;
-    }
+        }
 
     public bool CheckAwakening(UserItem item, AwakeType type)
-    {
+        {
         if (item.Info.CanAwakening != true) return false;
 
         if (item.Info.Grade == ItemGrade.None) return false;
@@ -3490,54 +3662,54 @@ public class Awake
         if (IsMaxLevel()) return false;
 
         if (this.type == AwakeType.None)
-        {
-            if (item.Info.Type == ItemType.Weapon)
             {
+            if (item.Info.Type == ItemType.Weapon)
+                {
                 if (type == AwakeType.DC ||
                     type == AwakeType.MC ||
                     type == AwakeType.SC)
-                {
+                    {
                     this.type = type;
                     return true;
-                }
+                    }
                 else
                     return false;
-            }
+                }
             else if (item.Info.Type == ItemType.Helmet)
-            {
+                {
                 if (type == AwakeType.AC ||
                     type == AwakeType.MAC)
-                {
+                    {
                     this.type = type;
                     return true;
-                }
+                    }
                 else
                     return false;
-            }
+                }
             else if (item.Info.Type == ItemType.Armour)
-            {
-                if (type == AwakeType.HPMP)
                 {
+                if (type == AwakeType.HPMP)
+                    {
                     this.type = type;
                     return true;
-                }
+                    }
                 else
                     return false;
-            }
+                }
             else
                 return false;
-        }
+            }
         else
-        {
+            {
             if (this.type == type)
                 return true;
             else
                 return false;
+            }
         }
-    }
 
     public int UpgradeAwake(UserItem item, AwakeType type, out bool[] isHit)
-    {
+        {
         //return -1 condition error, -1 = dont upgrade, 0 = failed, 1 = Succeed,  
         isHit = null;
         if (CheckAwakening(item, type) != true)
@@ -3546,35 +3718,35 @@ public class Awake
         Random rand = new Random(DateTime.Now.Millisecond);
 
         if (rand.Next(0, 100) <= AwakeSuccessRate)
-        {
+            {
             isHit = Awakening(item);
             return 1;
-        }
+            }
         else
-        {
+            {
             int idx;
             isHit = makeHit(1, out idx);
             return 0;
+            }
         }
-    }
 
     public int RemoveAwake()
-    {
-        if (listAwake.Count > 0)
         {
+        if (listAwake.Count > 0)
+            {
             listAwake.Remove(listAwake[listAwake.Count - 1]);
 
             if (listAwake.Count == 0)
                 type = AwakeType.None;
 
             return 1;
-        }
+            }
         else
-        {
+            {
             type = AwakeType.None;
             return 0;
+            }
         }
-    }
 
     public int getAwakeLevelValue(int i) { return listAwake[i]; }
 
@@ -3586,31 +3758,31 @@ public class Awake
     public byte getHPMP() { return (type == AwakeType.HPMP ? getAwakeValue() : (byte)0); }
 
     private bool[] makeHit(int maxValue, out int makeValue)
-    {
+        {
         float stepValue = (float)maxValue / 5.0f;
         float totalValue = 0.0f;
         bool[] isHit = new bool[5];
         Random rand = new Random(DateTime.Now.Millisecond);
 
         for (int i = 0; i < 5; i++)
-        {
-            if (rand.Next(0, 100) < AwakeHitRate)
             {
+            if (rand.Next(0, 100) < AwakeHitRate)
+                {
                 totalValue += stepValue;
                 isHit[i] = true;
-            }
+                }
             else
-            {
+                {
                 isHit[i] = false;
+                }
             }
-        }
 
         makeValue = totalValue <= 1.0f ? 1 : (int)totalValue;
         return isHit;
-    }
+        }
 
     private bool[] Awakening(UserItem item)
-    {
+        {
         int minValue = AwakeChanceMin;
         int maxValue = (AwakeChanceMax[(int)item.Info.Grade - 1] < AwakeChanceMin) ? AwakeChanceMin : AwakeChanceMax[(int)item.Info.Grade - 1];
 
@@ -3619,7 +3791,7 @@ public class Awake
         bool[] returnValue = makeHit(maxValue, out result);
 
         switch (item.Info.Type)
-        {
+            {
             case ItemType.Weapon:
                 result *= (int)Awake_WeaponRate;
                 break;
@@ -3632,16 +3804,16 @@ public class Awake
             default:
                 result = 0;
                 break;
-        }
+            }
 
         listAwake.Add((byte)result);
 
         return returnValue;
+        }
     }
-}
 
 public class ClientMagic
-{
+    {
     public Spell Spell;
     public byte BaseCost, LevelCost, Icon;
     public byte Level1, Level2, Level3;
@@ -3654,11 +3826,11 @@ public class ClientMagic
     public long CastTime, Delay;
 
     public ClientMagic()
-    {
-    }
+        {
+        }
 
     public ClientMagic(BinaryReader reader)
-    {
+        {
         Spell = (Spell)reader.ReadByte();
 
         BaseCost = reader.ReadByte();
@@ -3679,10 +3851,10 @@ public class ClientMagic
 
         Range = reader.ReadByte();
         CastTime = reader.ReadInt64();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write((byte)Spell);
 
         writer.Write(BaseCost);
@@ -3703,12 +3875,12 @@ public class ClientMagic
 
         writer.Write(Range);
         writer.Write(CastTime);
+        }
+
     }
-   
-}
 
 public class ClientAuction
-{
+    {
     public ulong AuctionID;
     public UserItem Item;
     public string Seller = string.Empty;
@@ -3716,29 +3888,29 @@ public class ClientAuction
     public DateTime ConsignmentDate;
 
     public ClientAuction()
-    {
-        
-    }
+        {
+
+        }
     public ClientAuction(BinaryReader reader)
-    {
+        {
         AuctionID = reader.ReadUInt64();
         Item = new UserItem(reader);
         Seller = reader.ReadString();
         Price = reader.ReadUInt32();
         ConsignmentDate = DateTime.FromBinary(reader.ReadInt64());
-    }
+        }
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(AuctionID);
         Item.Save(writer);
         writer.Write(Seller);
         writer.Write(Price);
         writer.Write(ConsignmentDate.ToBinary());
+        }
     }
-}
 
 public class ClientQuestInfo
-{
+    {
     public int Index;
 
     public uint NPCIndex;
@@ -3746,7 +3918,7 @@ public class ClientQuestInfo
     public string Name, Group;
     public List<string> Description = new List<string>();
     public List<string> TaskDescription = new List<string>();
-    public List<string> CompletionDescription = new List<string>(); 
+    public List<string> CompletionDescription = new List<string>();
 
     public int MinLevelNeeded, MaxLevelNeeded;
     public int QuestNeeded;
@@ -3763,14 +3935,14 @@ public class ClientQuestInfo
     public uint FinishNPCIndex;
 
     public bool SameFinishNPC
-    {
+        {
         get { return NPCIndex == FinishNPCIndex; }
-    }
+        }
 
     public ClientQuestInfo() { }
 
     public ClientQuestInfo(BinaryReader reader)
-    {
+        {
         Index = reader.ReadInt32();
         NPCIndex = reader.ReadUInt32();
         Name = reader.ReadString();
@@ -3799,7 +3971,7 @@ public class ClientQuestInfo
 
         count = reader.ReadInt32();
 
-        for (int i = 0; i < count; i++ )
+        for (int i = 0; i < count; i++)
             RewardsFixedItem.Add(new QuestItemReward(reader));
 
         count = reader.ReadInt32();
@@ -3808,9 +3980,9 @@ public class ClientQuestInfo
             RewardsSelectItem.Add(new QuestItemReward(reader));
 
         FinishNPCIndex = reader.ReadUInt32();
-    }
+        }
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Index);
         writer.Write(NPCIndex);
         writer.Write(Name);
@@ -3848,14 +4020,14 @@ public class ClientQuestInfo
             RewardsSelectItem[i].Save(writer);
 
         writer.Write(FinishNPCIndex);
-    }
+        }
 
     public QuestIcon GetQuestIcon(bool taken = false, bool completed = false)
-    {
+        {
         QuestIcon icon = QuestIcon.None;
 
         switch (Type)
-        {
+            {
             case QuestType.General:
             case QuestType.Repeatable:
                 if (completed)
@@ -3881,14 +4053,14 @@ public class ClientQuestInfo
                 else
                     icon = QuestIcon.ExclamationGreen;
                 break;
-        }
+            }
 
         return icon;
+        }
     }
-}
 
 public class ClientQuestProgress
-{
+    {
     public int Id;
 
     public ClientQuestInfo QuestInfo;
@@ -3900,17 +4072,17 @@ public class ClientQuestProgress
     public bool New;
 
     public QuestIcon Icon
-    {
-        get 
         {
-            return QuestInfo.GetQuestIcon(Taken, Completed); 
+        get
+            {
+            return QuestInfo.GetQuestIcon(Taken, Completed);
+            }
         }
-    }
 
-    public ClientQuestProgress(){ }
+    public ClientQuestProgress() { }
 
     public ClientQuestProgress(BinaryReader reader)
-    {
+        {
         Id = reader.ReadInt32();
 
         int count = reader.ReadInt32();
@@ -3921,10 +4093,10 @@ public class ClientQuestProgress
         Taken = reader.ReadBoolean();
         Completed = reader.ReadBoolean();
         New = reader.ReadBoolean();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Id);
 
         writer.Write(TaskList.Count);
@@ -3935,31 +4107,31 @@ public class ClientQuestProgress
         writer.Write(Taken);
         writer.Write(Completed);
         writer.Write(New);
+        }
     }
-}
 
 public class QuestItemReward
-{
+    {
     public ItemInfo Item;
     public uint Count = 1;
 
     public QuestItemReward() { }
 
     public QuestItemReward(BinaryReader reader)
-    {
+        {
         Item = new ItemInfo(reader);
         Count = reader.ReadUInt32();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         Item.Save(writer);
         writer.Write(Count);
+        }
     }
-}
 
 public class ClientMail
-{
+    {
     public ulong MailID;
     public string SenderName;
     public string Message;
@@ -3973,7 +4145,7 @@ public class ClientMail
     public ClientMail() { }
 
     public ClientMail(BinaryReader reader)
-    {
+        {
         MailID = reader.ReadUInt64();
         SenderName = reader.ReadString();
         Message = reader.ReadString();
@@ -3989,10 +4161,10 @@ public class ClientMail
 
         for (int i = 0; i < count; i++)
             Items.Add(new UserItem(reader));
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(MailID);
         writer.Write(SenderName);
         writer.Write(Message);
@@ -4008,11 +4180,11 @@ public class ClientMail
 
         for (int i = 0; i < Items.Count; i++)
             Items[i].Save(writer);
+        }
     }
-}
 
 public class ClientFriend
-{
+    {
     public int Index;
     public string Name;
     public string Memo = "";
@@ -4023,35 +4195,35 @@ public class ClientFriend
     public ClientFriend() { }
 
     public ClientFriend(BinaryReader reader)
-    {
+        {
         Index = reader.ReadInt32();
         Name = reader.ReadString();
         Memo = reader.ReadString();
         Blocked = reader.ReadBoolean();
 
         Online = reader.ReadBoolean();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Index);
         writer.Write(Name);
         writer.Write(Memo);
         writer.Write(Blocked);
 
         writer.Write(Online);
+        }
     }
-}
 
 
 public enum IntelligentCreaturePickupMode : byte
-{
+    {
     Automatic = 0,
     SemiAutomatic = 1,
-}
+    }
 
 public class IntelligentCreatureRules
-{
+    {
     public int MinimalFullness = 1;
 
     public bool MousePickupEnabled = false;
@@ -4068,11 +4240,11 @@ public class IntelligentCreatureRules
     public string Info2 = "";
 
     public IntelligentCreatureRules()
-    {
-    }
+        {
+        }
 
     public IntelligentCreatureRules(BinaryReader reader)
-    {
+        {
         MinimalFullness = reader.ReadInt32();
         MousePickupEnabled = reader.ReadBoolean();
         MousePickupRange = reader.ReadInt32();
@@ -4086,10 +4258,10 @@ public class IntelligentCreatureRules
         Info = reader.ReadString();
         Info1 = reader.ReadString();
         Info2 = reader.ReadString();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(MinimalFullness);
         writer.Write(MousePickupEnabled);
         writer.Write(MousePickupRange);
@@ -4103,11 +4275,11 @@ public class IntelligentCreatureRules
         writer.Write(Info);
         writer.Write(Info1);
         writer.Write(Info2);
+        }
     }
-}
 
 public class IntelligentCreatureItemFilter
-{
+    {
     public bool PetPickupAll = true;
     public bool PetPickupGold = false;
     public bool PetPickupWeapons = false;
@@ -4121,13 +4293,13 @@ public class IntelligentCreatureItemFilter
     public ItemGrade PickupGrade = ItemGrade.None;
 
     public IntelligentCreatureItemFilter()
-    {
-    }
+        {
+        }
 
     public void SetItemFilter(int idx)
-    {
-        switch (idx)
         {
+        switch (idx)
+            {
             case 0://all items
                 PetPickupAll = true;
                 PetPickupGold = false;
@@ -4171,9 +4343,9 @@ public class IntelligentCreatureItemFilter
                 PetPickupAll = false;
                 PetPickupOthers = !PetPickupOthers;
                 break;
-        }
+            }
         if (PetPickupGold && PetPickupWeapons && PetPickupArmours && PetPickupHelmets && PetPickupBoots && PetPickupBelts && PetPickupAccessories && PetPickupOthers)
-        {
+            {
             PetPickupAll = true;
             PetPickupGold = false;
             PetPickupWeapons = false;
@@ -4183,16 +4355,16 @@ public class IntelligentCreatureItemFilter
             PetPickupBelts = false;
             PetPickupAccessories = false;
             PetPickupOthers = false;
-        }
+            }
         else
             if (!PetPickupGold && !PetPickupWeapons && !PetPickupArmours && !PetPickupHelmets && !PetPickupBoots && !PetPickupBelts && !PetPickupAccessories && !PetPickupOthers)
             {
-                PetPickupAll = true;
+            PetPickupAll = true;
             }
-    }
+        }
 
     public IntelligentCreatureItemFilter(BinaryReader reader)
-    {
+        {
         PetPickupAll = reader.ReadBoolean();
         PetPickupGold = reader.ReadBoolean();
         PetPickupWeapons = reader.ReadBoolean();
@@ -4203,10 +4375,10 @@ public class IntelligentCreatureItemFilter
         PetPickupAccessories = reader.ReadBoolean();
         PetPickupOthers = reader.ReadBoolean();
         //PickupGrade = (ItemGrade)reader.ReadByte();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(PetPickupAll);
         writer.Write(PetPickupGold);
         writer.Write(PetPickupWeapons);
@@ -4217,11 +4389,11 @@ public class IntelligentCreatureItemFilter
         writer.Write(PetPickupAccessories);
         writer.Write(PetPickupOthers);
         //writer.Write((byte)PickupGrade);
+        }
     }
-}
 
 public class ClientIntelligentCreature
-{
+    {
     public IntelligentCreatureType PetType;
     public int Icon;
 
@@ -4239,11 +4411,11 @@ public class ClientIntelligentCreature
 
 
     public ClientIntelligentCreature()
-    {
-    }
+        {
+        }
 
     public ClientIntelligentCreature(BinaryReader reader)
-    {
+        {
         PetType = (IntelligentCreatureType)reader.ReadByte();
         Icon = reader.ReadInt32();
 
@@ -4259,10 +4431,10 @@ public class ClientIntelligentCreature
         Filter = new IntelligentCreatureItemFilter(reader);
         Filter.PickupGrade = (ItemGrade)reader.ReadByte();
         MaintainFoodTime = reader.ReadInt64();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write((byte)PetType);
         writer.Write(Icon);
 
@@ -4278,18 +4450,18 @@ public class ClientIntelligentCreature
         Filter.Save(writer);
         writer.Write((byte)Filter.PickupGrade);
         writer.Write(MaintainFoodTime);
+        }
     }
-}
 
 
 public abstract class Packet
-{
+    {
     public static bool IsServer;
 
     public abstract short Index { get; }
 
     public static Packet ReceivePacket(byte[] rawBytes, out byte[] extra)
-    {
+        {
         extra = rawBytes;
 
         Packet p;
@@ -4302,41 +4474,41 @@ public abstract class Packet
 
         using (MemoryStream stream = new MemoryStream(rawBytes, 2, length - 2))
         using (BinaryReader reader = new BinaryReader(stream))
-        {
-            try
             {
+            try
+                {
                 short id = reader.ReadInt16();
 
                 p = IsServer ? GetClientPacket(id) : GetServerPacket(id);
                 if (p == null) return null;
 
                 p.ReadPacket(reader);
-            }
+                }
             catch
-            {
+                {
                 return null;
                 //return new C.Disconnect();
+                }
             }
-        }
 
         extra = new byte[rawBytes.Length - length];
         Buffer.BlockCopy(rawBytes, length, extra, 0, rawBytes.Length - length);
 
         return p;
-    }
+        }
 
     public IEnumerable<byte> GetPacketBytes()
-    {
+        {
         if (Index < 0) return new byte[0];
 
         byte[] data;
 
         using (MemoryStream stream = new MemoryStream())
-        {
+            {
             stream.SetLength(2);
             stream.Seek(2, SeekOrigin.Begin);
             using (BinaryWriter writer = new BinaryWriter(stream))
-            {
+                {
                 writer.Write(Index);
                 WritePacket(writer);
                 stream.Seek(0, SeekOrigin.Begin);
@@ -4345,19 +4517,19 @@ public abstract class Packet
 
                 data = new byte[stream.Length];
                 stream.Read(data, 0, data.Length);
+                }
             }
-        }
 
         return data;
-    }
+        }
 
     protected abstract void ReadPacket(BinaryReader reader);
     protected abstract void WritePacket(BinaryWriter writer);
 
     private static Packet GetClientPacket(short index)
-    {
-        switch (index)
         {
+        switch (index)
+            {
             case (short)ClientPacketIds.ClientVersion:
                 return new C.ClientVersion();
             case (short)ClientPacketIds.Disconnect:
@@ -4552,7 +4724,7 @@ public abstract class Packet
                 return new C.CombineItem();
             case (short)ClientPacketIds.SetConcentration:
                 return new C.SetConcentration();
-			case (short)ClientPacketIds.AwakeningNeedMaterials:
+            case (short)ClientPacketIds.AwakeningNeedMaterials:
                 return new C.AwakeningNeedMaterials();
             case (short)ClientPacketIds.AwakeningLockedItem:
                 return new C.AwakeningLockedItem();
@@ -4604,13 +4776,13 @@ public abstract class Packet
                 return new C.Opendoor();
             default:
                 return null;
-        }
+            }
 
-    }
+        }
     public static Packet GetServerPacket(short index)
-    {
-        switch (index)
         {
+        switch (index)
+            {
             case (short)ServerPacketIds.Connected:
                 return new S.Connected();
             case (short)ServerPacketIds.ClientVersion:
@@ -4644,7 +4816,7 @@ public abstract class Packet
             case (short)ServerPacketIds.StartGameBanned:
                 return new S.StartGameBanned();
             case (short)ServerPacketIds.StartGameDelay:
-                return new S.StartGameDelay();       
+                return new S.StartGameDelay();
             case (short)ServerPacketIds.MapInformation:
                 return new S.MapInformation();
             case (short)ServerPacketIds.UserInformation:
@@ -4789,7 +4961,7 @@ public abstract class Packet
                 return new S.NPCSell();
             case (short)ServerPacketIds.NPCRepair:
                 return new S.NPCRepair();
-            case (short)ServerPacketIds.NPCSRepair: 
+            case (short)ServerPacketIds.NPCSRepair:
                 return new S.NPCSRepair();
             case (short)ServerPacketIds.NPCRefine:
                 return new S.NPCRefine();
@@ -4997,7 +5169,7 @@ public abstract class Packet
                 return new S.SetBindingShot();
             case (short)ServerPacketIds.SendOutputMessage:
                 return new S.SendOutputMessage();
-			case (short)ServerPacketIds.NPCAwakening:
+            case (short)ServerPacketIds.NPCAwakening:
                 return new S.NPCAwakening();
             case (short)ServerPacketIds.NPCDisassemble:
                 return new S.NPCDisassemble();
@@ -5023,7 +5195,7 @@ public abstract class Packet
                 return new S.ParcelCollected();
             case (short)ServerPacketIds.MailCost:
                 return new S.MailCost();
-			case (short)ServerPacketIds.ResizeInventory:
+            case (short)ServerPacketIds.ResizeInventory:
                 return new S.ResizeInventory();
             case (short)ServerPacketIds.ResizeStorage:
                 return new S.ResizeStorage();
@@ -5057,19 +5229,19 @@ public abstract class Packet
                 return new S.Opendoor();
             default:
                 return null;
+            }
         }
     }
-}
 
 public class BaseStats
-{
+    {
     public float HpGain, HpGainRate, MpGainRate, BagWeightGain, WearWeightGain, HandWeightGain;
     public byte MinAc, MaxAc, MinMac, MaxMac, MinDc, MaxDc, MinMc, MaxMc, MinSc, MaxSc, StartAgility, StartAccuracy, StartCriticalRate, StartCriticalDamage, CritialRateGain, CriticalDamageGain;
 
     public BaseStats(MirClass Job)
-    {
-        switch (Job)
         {
+        switch (Job)
+            {
             case MirClass.Warrior:
                 HpGain = 4F;
                 HpGainRate = 4.5F;
@@ -5190,10 +5362,10 @@ public class BaseStats
                 CritialRateGain = 0;
                 CriticalDamageGain = 0;
                 break;
+            }
         }
-    }
     public BaseStats(BinaryReader reader)
-    {
+        {
         HpGain = reader.ReadSingle();
         HpGainRate = reader.ReadSingle();
         MpGainRate = reader.ReadSingle();
@@ -5216,10 +5388,10 @@ public class BaseStats
         BagWeightGain = reader.ReadSingle();
         WearWeightGain = reader.ReadSingle();
         HandWeightGain = reader.ReadSingle();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(HpGain);
         writer.Write(HpGainRate);
         writer.Write(MpGainRate);
@@ -5242,10 +5414,10 @@ public class BaseStats
         writer.Write(BagWeightGain);
         writer.Write(WearWeightGain);
         writer.Write(HandWeightGain);
+        }
     }
-}
 public class RandomItemStat
-{
+    {
     public byte MaxDuraChance, MaxDuraStatChance, MaxDuraMaxStat;
     public byte MaxAcChance, MaxAcStatChance, MaxAcMaxStat, MaxMacChance, MaxMacStatChance, MaxMacMaxStat, MaxDcChance, MaxDcStatChance, MaxDcMaxStat, MaxMcChance, MaxMcStatChance, MaxMcMaxStat, MaxScChance, MaxScStatChance, MaxScMaxStat;
     public byte AccuracyChance, AccuracyStatChance, AccuracyMaxStat, AgilityChance, AgilityStatChance, AgilityMaxStat, HpChance, HpStatChance, HpMaxStat, MpChance, MpStatChance, MpMaxStat, StrongChance, StrongStatChance, StrongMaxStat;
@@ -5257,9 +5429,9 @@ public class RandomItemStat
     public byte CurseChance;
 
     public RandomItemStat(ItemType Type = ItemType.Book)
-    {
-        switch (Type)
         {
+        switch (Type)
+            {
             case ItemType.Weapon:
                 SetWeapon();
                 break;
@@ -5281,19 +5453,19 @@ public class RandomItemStat
                 break;
             case ItemType.Ring:
                 SetRing();
-                break; 
+                break;
             case ItemType.Mount:
                 SetMount();
                 break;
+            }
         }
-    }
 
     public void SetWeapon()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 13;
         MaxDuraMaxStat = 13;
-        
+
         MaxDcChance = 15;
         MaxDcStatChance = 15;
         MaxDcMaxStat = 13;
@@ -5309,7 +5481,7 @@ public class RandomItemStat
         AttackSpeedChance = 60;
         AttackSpeedStatChance = 30;
         AttackSpeedMaxStat = 3;
-        
+
         StrongChance = 24;
         StrongStatChance = 20;
         StrongMaxStat = 2;
@@ -5317,9 +5489,9 @@ public class RandomItemStat
         AccuracyChance = 30;
         AccuracyStatChance = 20;
         AccuracyMaxStat = 2;
-    }
+        }
     public void SetArmour()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5344,9 +5516,9 @@ public class RandomItemStat
         MaxScStatChance = 20;
         MaxScMaxStat = 7;
 
-    }
+        }
     public void SetHelmet()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5370,9 +5542,9 @@ public class RandomItemStat
         MaxScChance = 40;
         MaxScStatChance = 20;
         MaxScMaxStat = 7;
-    }
+        }
     public void SetBeltBoots()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5400,9 +5572,9 @@ public class RandomItemStat
         AgilityChance = 60;
         AgilityStatChance = 30;
         AgilityMaxStat = 3;
-    }
+        }
     public void SetNecklace()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5426,9 +5598,9 @@ public class RandomItemStat
         AgilityChance = 60;
         AgilityStatChance = 30;
         AgilityMaxStat = 7;
-    }
+        }
     public void SetBracelet()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5452,9 +5624,9 @@ public class RandomItemStat
         MaxScChance = 30;
         MaxScStatChance = 30;
         MaxScMaxStat = 6;
-    }
+        }
     public void SetRing()
-    {
+        {
         MaxDuraChance = 2;
         MaxDuraStatChance = 10;
         MaxDuraMaxStat = 3;
@@ -5478,39 +5650,39 @@ public class RandomItemStat
         MaxScChance = 15;
         MaxScStatChance = 30;
         MaxScMaxStat = 6;
-    }
+        }
 
     public void SetMount()
-    {
+        {
         SetRing();
+        }
     }
-}
 
 public class ChatItem
-{
+    {
     public long RecievedTick = 0;
     public ulong ID = 0;
     public UserItem ItemStats;
-}
+    }
 
 public class UserId
-{
+    {
     public long Id = 0;
     public string UserName = "";
-}
+    }
 
 #region ItemSets
 
 public class ItemSets
-{
+    {
     public ItemSet Set;
     public List<ItemType> Type;
     private byte Amount
-    {
-        get
         {
-            switch (Set)
+        get
             {
+            switch (Set)
+                {
                 case ItemSet.Mundane:
                 case ItemSet.NokChi:
                 case ItemSet.TaoProtect:
@@ -5546,24 +5718,24 @@ public class ItemSets
                     return 5;
                 default:
                     return 0;
+                }
+            }
+        }
+    public byte Count;
+    public bool SetComplete
+        {
+        get
+            {
+            return Count == Amount;
             }
         }
     }
-    public byte Count;
-    public bool SetComplete
-    {
-        get
-        {
-            return Count == Amount;
-        }
-    }
-}
 
 #endregion
 
 #region "Mine Related"
 public class MineSet
-{
+    {
     public string Name = string.Empty;
     public byte SpotRegenRate = 5;
     public byte MaxStones = 80;
@@ -5574,52 +5746,52 @@ public class MineSet
     private bool DropsSet = false;
 
     public MineSet(byte MineType = 0)
-    {
-        switch (MineType)
         {
+        switch (MineType)
+            {
             case 1:
                 TotalSlots = 120;
-                Drops.Add(new MineDrop(){ItemName = "GoldOre", MinSlot = 1, MaxSlot = 2, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10});
+                Drops.Add(new MineDrop() { ItemName = "GoldOre", MinSlot = 1, MaxSlot = 2, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "SilverOre", MinSlot = 3, MaxSlot = 20, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "CopperOre", MinSlot = 21, MaxSlot = 45, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "BlackIronOre", MinSlot = 46, MaxSlot = 56, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 break;
             case 2:
                 TotalSlots = 100;
-                Drops.Add(new MineDrop(){ItemName = "PlatinumOre", MinSlot = 1, MaxSlot = 2, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10});
+                Drops.Add(new MineDrop() { ItemName = "PlatinumOre", MinSlot = 1, MaxSlot = 2, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "RubyOre", MinSlot = 3, MaxSlot = 20, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "NephriteOre", MinSlot = 21, MaxSlot = 45, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 Drops.Add(new MineDrop() { ItemName = "AmethystOre", MinSlot = 46, MaxSlot = 56, MinDura = 3, MaxDura = 16, BonusChance = 20, MaxBonusDura = 10 });
                 break;
+            }
         }
-    }
 
     public void SetDrops(List<ItemInfo> items)
-    {
+        {
         if (DropsSet) return;
         for (int i = 0; i < Drops.Count; i++)
-        {
-            for (int j = 0; j < items.Count; j++)
             {
+            for (int j = 0; j < items.Count; j++)
+                {
                 ItemInfo info = items[j];
                 if (String.Compare(info.Name.Replace(" ", ""), Drops[i].ItemName, StringComparison.OrdinalIgnoreCase) != 0) continue;
                 Drops[i].Item = info;
                 break;
+                }
             }
-        }
         DropsSet = true;
+        }
     }
-}
 
 public class MineSpot
-{
+    {
     public byte StonesLeft = 0;
     public long LastRegenTick = 0;
     public MineSet Mine;
-}
+    }
 
 public class MineDrop
-{
+    {
     public string ItemName;
     public ItemInfo Item;
     public byte MinSlot = 0;
@@ -5628,58 +5800,67 @@ public class MineDrop
     public byte MaxDura = 1;
     public byte BonusChance = 0;
     public byte MaxBonusDura = 1;
-}
+    }
 
 public class MineZone
-{
+    {
+    public int MapMineIndex;
     public byte Mine;
     public Point Location;
     public ushort Size;
 
     public MineZone()
-    {
-    }
+        {
+        }
+
+    public MineZone(MySqlDataReader readerMineZoneInfo)
+        {
+        MapMineIndex = Convert.ToInt32(readerMineZoneInfo["MapMineIndex"]);
+        Location = new Point(Convert.ToInt32(readerMineZoneInfo["Location_X"]), Convert.ToInt32(readerMineZoneInfo["Location_Y"]));
+        Size = Convert.ToUInt16(readerMineZoneInfo["Size"]);
+        Mine = Convert.ToByte(readerMineZoneInfo["Mine"]);
+        }
 
     public MineZone(BinaryReader reader)
-    {
+        {
         Location = new Point(reader.ReadInt32(), reader.ReadInt32());
         Size = reader.ReadUInt16();
         Mine = reader.ReadByte();
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Location.X);
         writer.Write(Location.Y);
         writer.Write(Size);
         writer.Write(Mine);
-    }
+        }
     public override string ToString()
-    {
+        {
         return string.Format("Mine: {0}- {1}", Functions.PointToString(Location), Mine);
+        }
     }
-}
 #endregion
 
 #region "Guild Related"
 public class ItemVolume
-{
+    {
     public ItemInfo Item;
     public string ItemName;
     public uint Amount;
-}
+    }
 
 public class Rank
-{
+    {
     public List<GuildMember> Members = new List<GuildMember>();
     public string Name = "";
     public int Index = 0;
     public RankOptions Options = (RankOptions)0;
-    public Rank() 
-    {
-    }
+    public Rank()
+        {
+        }
     public Rank(BinaryReader reader, bool Offline = false)
-    {
+        {
         Name = reader.ReadString();
         Options = (RankOptions)reader.ReadByte();
         if (!Offline)
@@ -5687,9 +5868,9 @@ public class Rank
         int Membercount = reader.ReadInt32();
         for (int j = 0; j < Membercount; j++)
             Members.Add(new GuildMember(reader, Offline));
-    }
+        }
     public void Save(BinaryWriter writer, bool Save = false)
-    {
+        {
         writer.Write(Name);
         writer.Write((byte)Options);
         if (!Save)
@@ -5697,30 +5878,30 @@ public class Rank
         writer.Write(Members.Count);
         for (int j = 0; j < Members.Count; j++)
             Members[j].save(writer);
+        }
     }
-}
 
 public class GuildStorageItem
-{
+    {
     public UserItem Item;
     public long UserId = 0;
     public GuildStorageItem()
-    {
-    }
+        {
+        }
     public GuildStorageItem(BinaryReader reader)
-    {
+        {
         Item = new UserItem(reader);
         UserId = reader.ReadInt64();
-    }
+        }
     public void save(BinaryWriter writer)
-    {
+        {
         Item.Save(writer);
         writer.Write(UserId);
+        }
     }
-}
 
 public class GuildMember
-{
+    {
     public string name = "";
     public int Id;
     public object Player;
@@ -5729,30 +5910,30 @@ public class GuildMember
     public bool Online;
 
     public GuildMember()
-    {}
+        { }
     public GuildMember(BinaryReader reader, bool Offline = false)
-    {
+        {
         name = reader.ReadString();
         Id = reader.ReadInt32();
         LastLogin = DateTime.FromBinary(reader.ReadInt64());
         hasvoted = reader.ReadBoolean();
         Online = reader.ReadBoolean();
-        Online = Offline ? false: Online;
-    }
+        Online = Offline ? false : Online;
+        }
     public void save(BinaryWriter writer)
-    {
+        {
         writer.Write(name);
         writer.Write(Id);
         writer.Write(LastLogin.ToBinary());
         writer.Write(hasvoted);
         writer.Write(Online);
+        }
     }
-}
 
 [Flags]
 [Obfuscation(Feature = "renaming", Exclude = true)]
 public enum RankOptions : byte
-{
+    {
     CanChangeRank = 1,
     CanRecruit = 2,
     CanKick = 4,
@@ -5761,10 +5942,10 @@ public enum RankOptions : byte
     CanAlterAlliance = 32,
     CanChangeNotice = 64,
     CanActivateBuff = 128
-}
+    }
 
 public class GuildBuffInfo
-{
+    {
     public int Id;
     public int Icon = 0;
     public string name = "";
@@ -5778,8 +5959,8 @@ public class GuildBuffInfo
     public byte BuffMc;
     public byte BuffSc;
     public byte BuffAttack;
-    public int  BuffMaxHp;
-    public int  BuffMaxMp;
+    public int BuffMaxHp;
+    public int BuffMaxMp;
     public byte BuffMineRate;
     public byte BuffGemRate;
     public byte BuffFishRate;
@@ -5788,17 +5969,17 @@ public class GuildBuffInfo
     public byte BuffSkillRate;
     public byte BuffHpRegen;
     public byte BuffMPRegen;
-    
+
     public byte BuffDropRate;
     public byte BuffGoldRate;
 
     public GuildBuffInfo()
-    {
+        {
 
-    }
+        }
 
     public GuildBuffInfo(BinaryReader reader)
-    {
+        {
         Id = reader.ReadInt32();
         Icon = reader.ReadInt32();
         name = reader.ReadString();
@@ -5824,39 +6005,39 @@ public class GuildBuffInfo
         BuffAttack = reader.ReadByte();
         BuffDropRate = reader.ReadByte();
         BuffGoldRate = reader.ReadByte();
-    }
+        }
 
     public GuildBuffInfo(InIReader reader, int i)
-    {
-        Id  = reader.ReadInt32("Buff-" + i.ToString(), "Id",0);
+        {
+        Id = reader.ReadInt32("Buff-" + i.ToString(), "Id", 0);
         Icon = reader.ReadInt32("Buff-" + i.ToString(), "Icon", 0);
-        name = reader.ReadString("Buff-" + i.ToString(), "Name","");
-        LevelRequirement = reader.ReadByte("Buff-" + i.ToString(), "LevelReq",0);
-        PointsRequirement = reader.ReadByte("Buff-" + i.ToString(), "PointsReq",1);
-        TimeLimit = reader.ReadInt32("Buff-" + i.ToString(), "TimeLimit",0);;
-        ActivationCost = reader.ReadInt32("Buff-" + i.ToString(), "ActivationCost",0);
-        BuffAc = reader.ReadByte("Buff-" + i.ToString(), "BuffAc",0);
-        BuffMac = reader.ReadByte("Buff-" + i.ToString(), "BuffMAC",0);
-        BuffDc = reader.ReadByte("Buff-" + i.ToString(), "BuffDc",0);
-        BuffMc = reader.ReadByte("Buff-" + i.ToString(), "BuffMc",0);
-        BuffSc = reader.ReadByte("Buff-" + i.ToString(), "BuffSc",0);
-        BuffMaxHp = reader.ReadInt32("Buff-" + i.ToString(), "BuffMaxHp",0);
-        BuffMaxMp = reader.ReadInt32("Buff-" + i.ToString(), "BuffMaxMp",0);
-        BuffMineRate = reader.ReadByte("Buff-" + i.ToString(), "BuffMineRate",0);
-        BuffGemRate = reader.ReadByte("Buff-" + i.ToString(), "BuffGemRate",0);
-        BuffFishRate = reader.ReadByte("Buff-" + i.ToString(), "BuffFishRate",0);
-        BuffExpRate = reader.ReadByte("Buff-" + i.ToString(), "BuffExpRate",0);
-        BuffCraftRate = reader.ReadByte("Buff-" + i.ToString(), "BuffCraftRate",0);
-        BuffSkillRate = reader.ReadByte("Buff-" + i.ToString(), "BuffSkillRate",0);
-        BuffHpRegen = reader.ReadByte("Buff-" + i.ToString(), "BuffHpRegen",0);
-        BuffMPRegen = reader.ReadByte("Buff-" + i.ToString(), "BuffMpRegen",0);
-        BuffAttack = reader.ReadByte("Buff-" + i.ToString(), "BuffAttack",0);
-        BuffDropRate = reader.ReadByte("Buff-" + i.ToString(), "BuffDropRate",0);
-        BuffGoldRate = reader.ReadByte("Buff-" + i.ToString(), "BuffGoldRate",0);
-    }
+        name = reader.ReadString("Buff-" + i.ToString(), "Name", "");
+        LevelRequirement = reader.ReadByte("Buff-" + i.ToString(), "LevelReq", 0);
+        PointsRequirement = reader.ReadByte("Buff-" + i.ToString(), "PointsReq", 1);
+        TimeLimit = reader.ReadInt32("Buff-" + i.ToString(), "TimeLimit", 0); ;
+        ActivationCost = reader.ReadInt32("Buff-" + i.ToString(), "ActivationCost", 0);
+        BuffAc = reader.ReadByte("Buff-" + i.ToString(), "BuffAc", 0);
+        BuffMac = reader.ReadByte("Buff-" + i.ToString(), "BuffMAC", 0);
+        BuffDc = reader.ReadByte("Buff-" + i.ToString(), "BuffDc", 0);
+        BuffMc = reader.ReadByte("Buff-" + i.ToString(), "BuffMc", 0);
+        BuffSc = reader.ReadByte("Buff-" + i.ToString(), "BuffSc", 0);
+        BuffMaxHp = reader.ReadInt32("Buff-" + i.ToString(), "BuffMaxHp", 0);
+        BuffMaxMp = reader.ReadInt32("Buff-" + i.ToString(), "BuffMaxMp", 0);
+        BuffMineRate = reader.ReadByte("Buff-" + i.ToString(), "BuffMineRate", 0);
+        BuffGemRate = reader.ReadByte("Buff-" + i.ToString(), "BuffGemRate", 0);
+        BuffFishRate = reader.ReadByte("Buff-" + i.ToString(), "BuffFishRate", 0);
+        BuffExpRate = reader.ReadByte("Buff-" + i.ToString(), "BuffExpRate", 0);
+        BuffCraftRate = reader.ReadByte("Buff-" + i.ToString(), "BuffCraftRate", 0);
+        BuffSkillRate = reader.ReadByte("Buff-" + i.ToString(), "BuffSkillRate", 0);
+        BuffHpRegen = reader.ReadByte("Buff-" + i.ToString(), "BuffHpRegen", 0);
+        BuffMPRegen = reader.ReadByte("Buff-" + i.ToString(), "BuffMpRegen", 0);
+        BuffAttack = reader.ReadByte("Buff-" + i.ToString(), "BuffAttack", 0);
+        BuffDropRate = reader.ReadByte("Buff-" + i.ToString(), "BuffDropRate", 0);
+        BuffGoldRate = reader.ReadByte("Buff-" + i.ToString(), "BuffGoldRate", 0);
+        }
 
     public void Save(InIReader reader, int i)
-    {
+        {
         reader.Write("Buff-" + i.ToString(), "Id", Id);
         reader.Write("Buff-" + i.ToString(), "Icon", Icon);
         reader.Write("Buff-" + i.ToString(), "Name", name);
@@ -5882,10 +6063,10 @@ public class GuildBuffInfo
         reader.Write("Buff-" + i.ToString(), "BuffAttack", BuffAttack); ;
         reader.Write("Buff-" + i.ToString(), "BuffDropRate", BuffDropRate); ;
         reader.Write("Buff-" + i.ToString(), "BuffGoldRate", BuffGoldRate); ;
-    }
+        }
 
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Id);
         writer.Write(Icon);
         writer.Write(name);
@@ -5911,188 +6092,188 @@ public class GuildBuffInfo
         writer.Write(BuffAttack);
         writer.Write(BuffDropRate);
         writer.Write(BuffGoldRate);
-    }
+        }
 
     public override string ToString()
-    {
+        {
         return string.Format("{0}: {1}", Id, name);
-    }
+        }
 
     public string ShowStats()
-    {
+        {
         string text = string.Empty;
 
         //text = name + "\n";
         if (BuffAc > 0)
-        {
+            {
             text += string.Format("Increases AC by: 0-{0}.", BuffAc);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMac > 0)
-        {
+            {
             text += string.Format("Increases MAC by: 0-{0}.", BuffMac);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffDc > 0)
-        {
+            {
             text += string.Format("Increases DC by: 0-{0}.", BuffDc);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMc > 0)
-        {
+            {
             text += string.Format("Increases MC by: 0-{0}.", BuffMc);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffSc > 0)
-        {
+            {
             text += string.Format("Increases SC by: 0-{0}.", BuffSc);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMaxHp > 0)
-        {
+            {
             text += string.Format("Increases Hp by: {0}.", BuffMaxHp);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMaxMp > 0)
-        {
+            {
             text += string.Format("Increases MP by: {0}.", BuffMaxMp);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffHpRegen > 0)
-        {
+            {
             text += string.Format("Increases Health regen by: {0}.", BuffHpRegen);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMPRegen > 0)
-        {
+            {
             text += string.Format("Increases Mana regen by: {0}.", BuffMPRegen);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffMineRate > 0)
-        {
+            {
             text += string.Format("Increases Mining success by: {0}%.", BuffMineRate * 5);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffGemRate > 0)
-        {
+            {
             text += string.Format("Increases Gem success by: {0}%.", BuffGemRate * 5);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffFishRate > 0)
-        {
+            {
             text += string.Format("Increases Fishing success by: {0}%.", BuffFishRate * 5);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffExpRate > 0)
-        {
+            {
             text += string.Format("Increases Experience by: {0}%.", BuffExpRate);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffCraftRate > 0)
-        {
+            {
             text += string.Format("Increases Crafting success by: {0}%.", BuffCraftRate * 5);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffSkillRate > 0)
-        {
+            {
             text += string.Format("Increases Skill training by: {0}.", BuffSkillRate);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffAttack > 0)
-        {
+            {
             text += string.Format("Increases Damage by: {0}.", BuffAttack);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffDropRate > 0)
-        {
+            {
             text += string.Format("Droprate increased by: {0}%.", BuffDropRate);
             if (text != "") text += "\n";
-        }
+            }
         if (BuffGoldRate > 0)
-        {
+            {
             text += string.Format("Goldrate increased by: 0-{0}.", BuffGoldRate);
             if (text != "") text += "\n";
-        }
+            }
 
 
         return text;
+        }
     }
-}
 
 public class GuildBuff
-{
+    {
     public int Id;
     public GuildBuffInfo Info;
     public bool Active = false;
     public int ActiveTimeRemaining;
 
     public bool UsingGuildSkillIcon
-    {
+        {
         get { return Info != null && Info.Icon < 1000; }
-    }
+        }
 
     public GuildBuff()
-    {
-    }
+        {
+        }
 
     public GuildBuff(BinaryReader reader)
-    {
+        {
         Id = reader.ReadInt32();
         Active = reader.ReadBoolean();
         ActiveTimeRemaining = reader.ReadInt32();
-    }
+        }
     public void Save(BinaryWriter writer)
-    {
+        {
         writer.Write(Id);
         writer.Write(Active);
         writer.Write(ActiveTimeRemaining);
-    }
+        }
 
     public string PrintTimeSpan(double secs)
-    {
+        {
         TimeSpan t = TimeSpan.FromMinutes(secs);
         string answer;
         if (t.TotalMinutes < 1.0)
-        {
+            {
             answer = string.Format("{0}s", t.Seconds);
-        }
+            }
         else if (t.TotalHours < 1.0)
-        {
+            {
             answer = string.Format("{0}ms", t.Minutes);
-        }
+            }
         else // more than 1 hour
-        {
+            {
             answer = string.Format("{0}h {1:D2}m ", (int)t.TotalHours, t.Minutes);
-        }
+            }
 
         return answer;
-    }
-    
+        }
+
     public string ShowStats()
-    {
+        {
         if (Info == null) return "";
         return Info.ShowStats();
-    }
+        }
 
-}
+    }
 
 //outdated but cant delete it or old db's wont load
 public class GuildBuffOld
-{
-    public GuildBuffOld()
-    { }
-    public GuildBuffOld(BinaryReader reader)
     {
+    public GuildBuffOld()
+        { }
+    public GuildBuffOld(BinaryReader reader)
+        {
         reader.ReadByte();
         reader.ReadInt64();
+        }
     }
-}
 
 #endregion
 
 #region Ranking Pete107|Petesn00beh 15/1/2016
 public class Rank_Character_Info
-{
+    {
     public long PlayerId;
     public string Name;
     public MirClass Class;
@@ -6102,34 +6283,34 @@ public class Rank_Character_Info
     public object info;//again only keep this on server!
 
     public Rank_Character_Info()
-    {
+        {
 
-    }
+        }
     public Rank_Character_Info(BinaryReader reader)
-    {
+        {
         //rank = reader.ReadInt32();
         PlayerId = reader.ReadInt64();
         Name = reader.ReadString();
         level = reader.ReadInt32();
         Class = (MirClass)reader.ReadByte();
 
-    }
+        }
     public void Save(BinaryWriter writer)
-    {
+        {
         //writer.Write(rank);
         writer.Write(PlayerId);
         writer.Write(Name);
         writer.Write(level);
         writer.Write((byte)Class);
+        }
     }
-}
 #endregion
 
 public class Door
-{
+    {
     public byte index;
     public byte DoorState;//0: closed, 1: opening, 2: open, 3: closing
     public byte ImageIndex;
     public long LastTick;
     public Point Location;
-}
+    }
